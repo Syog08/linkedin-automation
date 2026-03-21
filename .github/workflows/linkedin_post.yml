@@ -20,26 +20,3 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-```
-
-Click **Commit changes**.
-
----
-
-## Step 5 — Add your secret keys
-
-In your repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
-
-Add these three one by one:
-
-| Name | Value |
-|---|---|
-| `ANTHROPIC_API_KEY` | your Anthropic key |
-| `TELEGRAM_BOT_TOKEN` | your Telegram bot token |
-| `TELEGRAM_CHAT_ID` | your chat ID (see below) |
-
-**To get your Chat ID** — you need to run one small thing. The easiest way without technical skills:
-
-Go to this URL in your browser (replace YOUR_TOKEN with your actual bot token):
-```
-https://api.telegram.org/botYOUR_TOKEN/getUpdates
