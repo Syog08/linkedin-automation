@@ -1,0 +1,45 @@
+name: LinkedIn Post Generator
+
+on:
+  schedule:
+    - cron: '0 7 * * 2'
+    - cron: '0 7 * * 4'
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - run: pip install anthropic requests beautifulsoup4 feedparser
+      - run: python3 weekly_post_generator.py
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.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 }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+```
+
+Click **Commit changes**.
+
+---
+
+## Step 5 — Add your secret keys
+
+In your repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
+
+Add these three one by one:
+
+| Name | Value |
+|---|---|
+| `ANTHROPIC_API_KEY` | your Anthropic key |
+| `TELEGRAM_BOT_TOKEN` | your Telegram bot token |
+| `TELEGRAM_CHAT_ID` | your chat ID (see below) |
+
+**To get your Chat ID** — you need to run one small thing. The easiest way without technical skills:
+
+Go to this URL in your browser (replace YOUR_TOKEN with your actual bot token):
+```
+https://api.telegram.org/botYOUR_TOKEN/getUpdates
