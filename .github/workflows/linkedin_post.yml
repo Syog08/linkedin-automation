@@ -18,7 +18,7 @@ jobs:
       - run: python3 weekly_post_generator.py
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.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 }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 ```
 
