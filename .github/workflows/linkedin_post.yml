@@ -2,16 +2,21 @@ name: LinkedIn Post Generator
 
 on:
   schedule:
-    - cron: '0 7 * * 2'
-    - cron: '0 7 * * 4'
+    - cron: '0 7 * * 2'   # Tuesday 7am UTC (8am Malta)
+    - cron: '0 7 * * 4'   # Thursday 7am UTC (8am Malta)
   workflow_dispatch:
+    inputs:
+      regenerate:
+        description: 'Regenerate post without re-scraping? (type: true)'
+        required: false
+        default: 'false'
 
 jobs:
   generate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       - run: pip install anthropic requests beautifulsoup4 feedparser
@@ -20,3 +25,4 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          REGENERATE: ${{ github.event.inputs.regenerate || 'false' }}
