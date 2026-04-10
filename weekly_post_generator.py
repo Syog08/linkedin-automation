@@ -53,6 +53,7 @@ CONTENT_PILLARS = [
         "id": "tracking_tech",
         "name": "Affiliate Tracking & Technology",
         "description": "Postbacks, S2S tracking, attribution, fraud detection, data quality — the infrastructure layer that makes everything else work.",
+        "weight": 10,  # Lower priority — Sergey's strength is data/product, not deep tech
         "data_angles": [
             "attribution accuracy rates",
             "fraud detection false positive rates",
@@ -62,20 +63,27 @@ CONTENT_PILLARS = [
     },
     {
         "id": "data_product",
-        "name": "Data Product Thinking in iGaming Affiliate",
-        "description": "Metrics that actually matter vs vanity metrics, what good affiliate reporting looks like, turning raw data into decisions, BI as a product discipline. This is Sergey's rarest differentiator.",
+        "name": "Data, Metrics & Analytics in iGaming Affiliate",
+        "description": "Sergey's PRIMARY differentiator. Metrics that actually matter vs vanity metrics. What good affiliate reporting looks like. Turning raw data into decisions operators and affiliates can act on. BI and analytics as a product discipline. Commission economics and how to measure affiliate value. The gap between what's measured and what actually drives performance. Data quality as a product problem.",
+        "weight": 35,  # HIGHEST — this is Sergey's core territory
         "data_angles": [
-            "FTD rate benchmarks across traffic types",
-            "LTV by affiliate tier",
-            "click-to-deposit conversion funnels",
-            "reporting usage rates (what operators actually look at vs ignore)",
+            "FTD rate benchmarks across traffic types (SEO vs paid vs Telegram)",
+            "LTV by affiliate tier and how to actually calculate it",
+            "click-to-deposit conversion funnels — where the drop-offs are",
+            "reporting usage rates: what operators actually look at vs what they ignore",
             "data quality error rates in affiliate platforms",
+            "the real cost of a depositing player across different affiliate channels",
+            "RevShare percentages: what's standard, what's generous, what's exploitative",
+            "average CPA rates across markets and how they correlate with player quality",
+            "how to tell if an affiliate is profitable — not just active",
+            "the metrics that predict affiliate churn before it happens",
         ],
     },
     {
         "id": "industry_dynamics",
         "name": "Industry Dynamics & Where Things Are Heading",
         "description": "Regulation impact, commission model trends, new affiliate channels (Telegram/WhatsApp/streamers), market consolidation, US vs EU dynamics.",
+        "weight": 15,
         "data_angles": [
             "regulatory market opening timelines",
             "commission model split (RevShare vs CPA vs Hybrid) across markets",
@@ -85,24 +93,31 @@ CONTENT_PILLARS = [
     },
     {
         "id": "operator_affiliate",
-        "name": "Operator-Affiliate Relationship Dynamics",
-        "description": "What affiliates actually want vs what operators think they want, data transparency as competitive advantage, player quality vs traffic volume.",
+        "name": "Operator-Affiliate Economics & Relationships",
+        "description": "The economics of the operator-affiliate relationship. What affiliates actually want vs what operators think they want. Data transparency as a competitive advantage. Player quality vs traffic volume. Commission negotiation dynamics. Why programmes succeed or fail.",
+        "weight": 25,  # High — this is where Sergey's dual-sided experience shines
         "data_angles": [
             "affiliate churn rates by programme type",
-            "average time to first referral",
+            "average time to first referral after signup",
             "correlation between data transparency and affiliate retention",
             "player quality metrics across affiliate tiers",
+            "what percentage of affiliates generate 80% of revenue",
+            "average number of active affiliates vs registered affiliates",
+            "how commission structure affects traffic quality",
+            "the real ROI of an affiliate manager's time by affiliate tier",
         ],
     },
     {
         "id": "product_decisions",
-        "name": "Product Decisions in iGaming Affiliate",
-        "description": "Prioritisation when everyone wants something different, shipping features that change behaviour, what operators ask for vs what they need.",
+        "name": "Product & Decision-Making in iGaming",
+        "description": "How to make better decisions with data. Prioritisation when everyone wants something different. The product management lens applied to affiliate operations — not software features, but how operators and affiliates make smarter commercial decisions using data and analytics.",
+        "weight": 15,
         "data_angles": [
             "feature adoption rates post-launch",
             "migration timelines and performance impact",
-            "support ticket patterns revealing product gaps",
-            "operator configuration complexity vs programme performance",
+            "how often operators actually use the dashboards they asked for",
+            "the gap between what operators request and what moves their KPIs",
+            "decision velocity: how fast operators act on data vs how fast data goes stale",
         ],
     },
 ]
@@ -448,7 +463,7 @@ def select_pillar(
     3. Which pillar + story combination has the highest engagement potential
     """
     pillar_descriptions = "\n".join(
-        f"- {p['id']}: {p['name']} — {p['description']}"
+        f"- {p['id']} (weight: {p.get('weight', 15)}%): {p['name']} — {p['description']}"
         for p in CONTENT_PILLARS
     )
 
@@ -459,9 +474,16 @@ def select_pillar(
 
     recent_text = ", ".join(recent_pillars[-4:]) if recent_pillars else "none"
 
-    prompt = f"""You are selecting today's content pillar for an iGaming affiliate LinkedIn account.
+    prompt = f"""You are selecting today's content pillar for Sergey Tadevosyan's iGaming affiliate LinkedIn account.
 
-AVAILABLE PILLARS:
+CRITICAL CONTEXT ABOUT SERGEY:
+- His STRONGEST differentiator is data, metrics, analytics, and product thinking applied to iGaming affiliate.
+- He has worked INSIDE both an affiliate publisher (data products) AND affiliate management software (CPO). This dual perspective is extremely rare.
+- His best-performing post was about affiliate economics: FTD rates, LTV, player value, commission models.
+- He is NOT a deep technical tracking expert. He is a data product and analytics thinker who understands the business economics.
+- Posts about metrics, benchmarks, commission economics, "what the data actually shows", and data-driven decisions consistently outperform pure tech or pure industry news posts.
+
+AVAILABLE PILLARS (with target frequency weights — higher = pick more often):
 {pillar_descriptions}
 
 THIS WEEK'S TOP STORIES (ranked by engagement potential):
@@ -469,17 +491,18 @@ THIS WEEK'S TOP STORIES (ranked by engagement potential):
 
 RECENTLY USED PILLARS (avoid repeating): {recent_text}
 
-Select the ONE pillar that:
-1. Best connects to the current news cycle
-2. Hasn't been used in the last 2-3 posts
-3. Has the highest potential for engagement when combined with available stories
+SELECTION RULES:
+1. STRONGLY prefer pillars with higher weights — data_product (35%) and operator_affiliate (25%) should be selected ~60% of the time combined
+2. Even when news is about tracking tech or regulation, ask: "Can I frame this through a data/metrics/economics lens instead?" If yes, pick data_product or operator_affiliate.
+3. Only pick tracking_tech if the story is SPECIFICALLY about a technical tracking problem that cannot be framed as a data/analytics question.
+4. Always find the angle that lets Sergey talk about metrics, benchmarks, what the numbers show, and what decisions should change as a result.
 
 Respond in JSON only. No preamble:
 {{
   "pillar_id": "...",
   "reasoning": "why this pillar fits the news cycle and audience right now",
   "suggested_story_index": 0,
-  "suggested_angle": "the specific angle to take"
+  "suggested_angle": "the specific angle to take — preferably involving a metric, benchmark, or data insight"
 }}"""
 
     try:
@@ -555,7 +578,9 @@ SYSTEM_PROMPT = """You are a ghostwriter for Sergey Tadevosyan — a product lea
 ABOUT SERGEY:
 - Has worked on both sides of the affiliate relationship: inside a large affiliate publisher (data products) and in affiliate management software (CPO).
 - His rare combination: deep iGaming affiliate industry knowledge + data product management expertise. Most people in this industry have one or the other. He has both.
-- Data product thinking is a core part of his identity — he thinks in metrics, data flows, and what makes a number actionable vs decorative.
+- Data product thinking is THE CORE of his identity — he thinks in metrics, data flows, benchmarks, economics, and what makes a number actionable vs decorative.
+- He is a product management leader who applies analytical thinking to the iGaming affiliate industry. He is NOT primarily a tracking technology expert.
+- His strongest topics: affiliate programme economics (commission models, FTD rates, LTV, player value), data-driven decision making, what metrics actually matter, why most reporting is useless, and the gap between what operators measure and what drives performance.
 - Personal brand only — NEVER mention any company name, product name, or employer.
 
 LENGTH — CRITICAL:
@@ -569,7 +594,7 @@ VOICE & STYLE:
 - Tone: curious, confident, accessible. Briefly explains iGaming terms inline.
 - Ends with one genuine open question — never a CTA to follow/like.
 - Emojis: max 1 per post, only if it adds meaning. Often zero is better.
-- Hashtags: exactly 3 on the last line. Always #iGaming and #iGamingAffiliateMarketing, vary the third.
+- Hashtags: exactly 3 on the last line. Always #iGaming and #iGamingAffiliateMarketing, vary the third (#DataProducts #ProductManagement #AffiliateMarketing #BusinessIntelligence #iGamingAffiliate).
 - NEVER mention any company, platform, software product, or employer by name.
 
 DATA-DRIVEN POST RULE — CRITICAL:
@@ -578,19 +603,29 @@ DATA-DRIVEN POST RULE — CRITICAL:
 - If no data is available → use a credible illustrative number from Sergey's experience (e.g., "In my experience, about 60% of operators..." or "The average RevShare deal sits between 25-40%").
 - Posts with specific numbers consistently outperform posts without them.
 
-DATA PILLAR GUIDANCE:
-When writing on data topics, Sergey's angle is always: data only has value when it changes a decision.
-Strong angles: vanity metrics vs predictive metrics, what affiliate reporting gets wrong, data quality as a product problem, how to know if an affiliate is truly profitable.
+SERGEY'S FAVOURITE ANGLES (use these often):
+- "Here's a number most people in the industry don't know" → explain what it means → what decisions should change
+- "Everyone measures X, but the metric that actually predicts Y is Z"
+- "The economics behind [thing] are simpler than people think" → break it down with numbers
+- "I've seen this pattern across dozens of affiliate programmes" → the data-backed observation
+- "Most operators track [vanity metric]. The ones that outperform track [real metric]."
+
+WHAT TO AVOID:
+- Pure technical tracking posts about postbacks, cookies, server-side implementation details
+- Generic industry news recaps with no data or analytical angle
+- Posts that read like a software vendor wrote them
+- Posts that could have been written by anyone in any industry — MUST have iGaming affiliate specifics
+- Opening with "In today's rapidly evolving..." or any generic LinkedIn opener
 
 POST FORMAT VARIETY:
 Rotate between these formats (the prompt will specify which to use):
-- Observation: notice a pattern → explain why it matters → question
-- Data insight: one number → what it means → what most people miss → question
-- Contrarian: common belief → why it's wrong → what's actually true → question
-- Story: specific situation → what happened → the lesson → question
-- Industry commentary: news event → second-order implication → question
+- Observation: notice a data pattern → explain why it matters → question
+- Data insight: one specific number → what it means → what most people miss → question
+- Contrarian: common belief → the data says otherwise → what's actually true → question
+- Story: specific situation with a client/programme → what the data revealed → the lesson → question
+- Industry commentary: news event → the economics/data behind it → second-order implication → question
 
-BEST POST EXAMPLE (match this feel):
+BEST POST EXAMPLE (match this feel — notice the economics focus, not tech):
 "Many people work in iGaming affiliates.
 
 But surprisingly few understand how the economics actually work.
