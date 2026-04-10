@@ -1,138 +1,89 @@
-# LinkedIn Post Automation — Setup Guide
+# LinkedIn Intelligence Engine — v2.0
 
-Generates one LinkedIn post per week, in your voice, grounded in current iGaming affiliate news. Delivers it to your Telegram, ready to copy-paste.
-
----
-
-## What It Does
-
-Every time it runs (you set the schedule):
-1. Scrapes iGB, Gambling Insider, CalvinAyre, AffiliateINSIDER, EGR for relevant news
-2. Picks the most iGaming-affiliate-relevant stories
-3. Rotates through your 3 content pillars (so posts stay varied week to week)
-4. Calls Claude to draft a post in your voice — grounded in current news, not a news recap
-5. Sends it to you on Telegram, formatted and ready to post
+An AI-powered editorial system that generates high-engagement LinkedIn posts for the iGaming affiliate industry. Goes beyond basic automation — this system thinks, scores, learns, and improves.
 
 ---
 
-## One-Time Setup (15 minutes)
+## What's New in v2
 
-### Step 1 — Install dependencies
+| Feature | v1 | v2 |
+|---|---|---|
+| Source filtering | Keyword matching | AI editorial triage (rates stories 1-10) |
+| Pillar selection | Mechanical rotation | AI picks the best pillar for the news cycle |
+| Data extraction | None | Extracts numbers, metrics, entities from articles |
+| Quality control | None | AI scores every post on 5 dimensions, auto-regenerates weak ones |
+| Feedback loop | None | Tracks performance in Supabase, feeds winners back into prompts |
+| Post formats | One style | 5 rotating formats (observation, data insight, contrarian, story, commentary) |
+| Cadence | 2x/week | 3x/week (Tue, Thu, Sat) |
+| Data requirement | Optional | Every post MUST include at least one specific metric |
 
+---
+
+## How It Works
+
+Every run executes 7 phases:
+
+1. **Scrape** — Pull latest from iGB, Gambling Insider, CalvinAyre, AffiliateINSIDER, EGR, SiGMA + Tracking the Truth podcast
+2. **Editorial Triage** — AI rates all stories by LinkedIn engagement potential (not just keyword matching)
+3. **Data Extraction** — Deep-reads the top article, extracts specific numbers, claims, entities, and "so what"
+4. **Adaptive Pillar Selection** — AI picks the best content pillar for today's news cycle (avoids recent repeats)
+5. **Feedback Loop** — Loads your top-performing past posts to guide generation
+6. **Generate + Score** — Drafts a post, scores it on 5 dimensions (hook, data density, dual audience, specificity, question quality). Auto-regenerates if below 6.5/10
+7. **Deliver + Log** — Sends to Telegram with quality metadata; logs everything to Supabase
+
+---
+
+## Setup
+
+### Step 1 — Same as v1
 ```bash
-pip install anthropic requests beautifulsoup4 feedparser python-telegram-bot
+pip install anthropic requests beautifulsoup4 feedparser
 ```
 
-### Step 2 — Get your Anthropic API key
+### Step 2 — Supabase (new in v2)
 
-1. Go to https://console.anthropic.com
-2. Create an API key
-3. Copy it
+The feedback loop needs a Supabase project. If you already have `linkedin-intelligence`:
 
-### Step 3 — Create a Telegram bot
+1. Go to your Supabase dashboard
+2. Get your **Project URL** and **anon key** (or service role key) from Settings → API
+3. The migration creates 3 tables automatically: `post_performance`, `scrape_log`, `weekly_briefing`
 
-1. Open Telegram, search for **@BotFather**
-2. Send `/newbot` and follow the prompts
-3. Copy the **bot token** it gives you (looks like `123456:ABC-DEF...`)
-4. Open your new bot in Telegram and send it any message (e.g. "hello")
+### Step 3 — GitHub Secrets
 
-### Step 4 — Get your Telegram Chat ID
+Add these to your repo → Settings → Secrets and variables → Actions:
 
-```bash
-export TELEGRAM_BOT_TOKEN=your_token_here
-python3 get_chat_id.py
-```
+| Secret | Description |
+|---|---|
+| `ANTHROPIC_API_KEY` | Your Anthropic API key |
+| `TELEGRAM_BOT_TOKEN` | From @BotFather on Telegram |
+| `TELEGRAM_CHAT_ID` | Your chat ID (run `get_chat_id.py`) |
+| `SUPABASE_URL` | e.g. `https://lpzuinapbangebuxhiix.supabase.co` |
+| `SUPABASE_KEY` | Your Supabase anon or service role key |
 
-Copy the Chat ID it prints.
-
-### Step 5 — Set your environment variables
-
-Create a `.env` file in this folder:
-
-```
-ANTHROPIC_API_KEY=sk-ant-...
-TELEGRAM_BOT_TOKEN=123456:ABC-DEF...
-TELEGRAM_CHAT_ID=987654321
-```
-
-Or export them directly:
-
+### Step 4 — Test
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
-export TELEGRAM_BOT_TOKEN=123456:ABC-DEF...
-export TELEGRAM_CHAT_ID=987654321
-```
-
-### Step 6 — Test it manually
-
-```bash
+export TELEGRAM_BOT_TOKEN=...
+export TELEGRAM_CHAT_ID=...
+export SUPABASE_URL=https://your-project.supabase.co
+export SUPABASE_KEY=your-key
 python3 weekly_post_generator.py
 ```
-
-You should receive a Telegram message within ~30 seconds.
-
----
-
-## Scheduling (Run Automatically Every Week)
-
-### Option A — Mac/Linux (cron job)
-
-Run every Monday at 8am Malta time (CET = UTC+1):
-
-```bash
-crontab -e
-```
-
-Add this line:
-
-```
-0 8 * * 1 cd /path/to/linkedin-automation && ANTHROPIC_API_KEY=xxx TELEGRAM_BOT_TOKEN=xxx TELEGRAM_CHAT_ID=xxx python3 weekly_post_generator.py >> cron.log 2>&1
-```
-
-### Option B — Free cloud scheduler (no computer needed)
-
-Use **GitHub Actions** (free):
-
-1. Push this folder to a private GitHub repo
-2. Create `.github/workflows/weekly_post.yml`:
-
-```yaml
-name: Weekly LinkedIn Post
-
-on:
-  schedule:
-    - cron: '0 7 * * 1'  # Every Monday 7am UTC (8am Malta)
-  workflow_dispatch:       # Also allows manual trigger
-
-jobs:
-  generate:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-      - run: pip install anthropic requests beautifulsoup4 feedparser
-      - run: python3 weekly_post_generator.py
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-```
-
-3. Add your secrets in GitHub → Repo Settings → Secrets and variables → Actions
-
-That's it. Free, runs in the cloud, no computer needs to be on.
 
 ---
 
 ## What You Receive on Telegram
 
 ```
-📝 LinkedIn Post Ready
-2026-03-24 08:00
-Pillar: affiliate tracking & technology
-Inspired by: [iGB] How postback fraud is evolving in 2026
+✍️ LinkedIn Post Ready — Tuesday
+2026-04-11 08:00
+Pillar: Data Product Thinking in iGaming Affiliate
+Format: data_insight
+🟢 Quality: 8.2/10
+📊 Hook:8 Data:9 Dual:7 Spec:9 Q:8
+💡 Consider adding a comparison to make the metric more tangible
+
+Inspired by: [iGB](https://...)
 
 ─────────────────────
 
@@ -140,39 +91,87 @@ Inspired by: [iGB] How postback fraud is evolving in 2026
 
 ─────────────────────
 ✅ Copy and post on LinkedIn
-⏰ Best time: Tue–Thu 8–10am CET
+⏰ Best time: 8–10am CET
 ```
 
 ---
 
-## Customisation
+## The Feedback Loop (Important)
 
-**Change posting day/time**: Edit the cron schedule.
+The system gets smarter over time, but it needs your help:
 
-**Add more news sources**: Add RSS feed URLs to the `RSS_FEEDS` list in the script.
+**After posting**, update the `post_performance` table in Supabase with actual results:
+- `impressions` — from LinkedIn analytics
+- `reactions` — total likes/celebrates/etc
+- `comments` — comment count
+- `posted` — set to `true` if you actually posted it
+- `engagement_rate` — (reactions + comments) / impressions × 100
+- `notes` — your observations ("hook was weak", "great debate in comments", etc.)
 
-**Change content pillars**: Edit the `CONTENT_PILLARS` list. Add or remove pillars as your focus evolves.
-
-**Run more frequently**: Change the cron to `0 8 * * 1,4` for Monday + Thursday (2x/week).
+Even updating 1-2 posts per week makes a difference. After 10-15 posts with data, the system starts learning what works for your specific audience.
 
 ---
 
 ## Cost
 
-- **Anthropic API**: ~$0.01–0.03 per post (Claude Sonnet). 1 post/week = pennies per month.
-- **Telegram**: Free.
-- **GitHub Actions**: Free (2,000 minutes/month, this uses ~1 minute per run).
+- **Anthropic API**: ~$0.08–0.15 per run (4-6 Claude Sonnet calls: triage + extraction + pillar selection + generation + scoring + possible regeneration)
+- **Supabase**: Free tier (plenty for this use case)
+- **Telegram**: Free
+- **GitHub Actions**: Free tier
 
-Total: effectively free.
+Total: ~$1-2/month for 12 posts.
 
 ---
 
-## Troubleshooting
+## Architecture
 
-**No Telegram message received**: Run `get_chat_id.py` again and make sure you've messaged your bot first.
-
-**"Missing environment variables" error**: Check your `.env` file or exports.
-
-**Empty news / no stories found**: RSS feeds occasionally go down. The script will still generate a post using your content pillars — it just won't be news-inspired that week.
-
-**Post doesn't sound right**: The script uses your voice guidelines baked into the system prompt. If a post is off, you can run it again — Claude will generate a different angle. Over time, reply to the Telegram message with feedback and we can refine the prompt.
+```
+RSS Feeds ─────────────┐
+YouTube Podcast ───────┤
+                       ▼
+              ┌─── SCRAPE ───┐
+              │  15 stories   │
+              └──────┬────────┘
+                     ▼
+          ┌── AI TRIAGE ──┐
+          │ Score 1-10     │
+          │ Best angles    │
+          │ Data points    │
+          └──────┬─────────┘
+                 ▼
+       ┌── DATA EXTRACT ──┐
+       │ Numbers, metrics  │
+       │ Claims, entities  │
+       │ "So what"         │
+       └──────┬────────────┘
+              ▼
+    ┌── PILLAR SELECT ──┐
+    │ News-aware         │
+    │ Avoids repeats     │
+    │ Best angle         │
+    └──────┬─────────────┘
+           ▼
+    ┌── FEEDBACK ──┐
+    │ Top 3 past    │
+    │ performers    │
+    └──────┬────────┘
+           ▼
+    ┌── GENERATE ──┐
+    │ Rich context  │
+    │ Data required │
+    │ Format varied │
+    └──────┬────────┘
+           ▼
+    ┌── SCORE ────────┐
+    │ Hook: 8/10       │
+    │ Data: 9/10       │  ─── Below 6.5? ──→ Regenerate (max 3x)
+    │ Dual: 7/10       │
+    │ Spec: 9/10       │
+    │ Q:    8/10       │
+    └──────┬───────────┘
+           ▼
+    ┌── DELIVER ──┐      ┌── LOG ──┐
+    │ Telegram     │      │ Supabase │
+    │ + scores     │      │ feedback │
+    └──────────────┘      └──────────┘
+```
