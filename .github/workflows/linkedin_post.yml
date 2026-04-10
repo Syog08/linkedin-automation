@@ -1,9 +1,10 @@
-name: LinkedIn Post Generator
+name: LinkedIn Intelligence Engine
 
 on:
   schedule:
-    - cron: '0 7 * * 2'   # Tuesday 7am UTC (8am Malta)
-    - cron: '0 7 * * 4'   # Thursday 7am UTC (8am Malta)
+    - cron: '0 7 * * 2'   # Tuesday  7am UTC (8am Malta CET)
+    - cron: '0 7 * * 4'   # Thursday 7am UTC (8am Malta CET)
+    - cron: '0 8 * * 6'   # Saturday 8am UTC (9am Malta CET) — weekend slot
   workflow_dispatch:
     inputs:
       regenerate:
@@ -14,15 +15,23 @@ on:
 jobs:
   generate:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install anthropic requests beautifulsoup4 feedparser
-      - run: python3 weekly_post_generator.py
+
+      - name: Install dependencies
+        run: pip install anthropic requests beautifulsoup4 feedparser
+
+      - name: Generate and deliver post
+        run: python3 weekly_post_generator.py
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           REGENERATE: ${{ github.event.inputs.regenerate || 'false' }}
