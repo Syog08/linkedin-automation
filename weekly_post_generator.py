@@ -719,25 +719,42 @@ def generate_post(
 CONTENT PILLAR: {pillar['name']} — {pillar['description']}
 
 POST FORMAT: {post_format}
-- observation: notice a pattern → explain why it matters → question
+- observation: notice a data pattern → explain why it matters → question
 - data_insight: open with one specific number → what it means → what most people miss → question
-- contrarian: common belief → why it's wrong → what's actually true → question
-- story: specific situation → what happened → the lesson → question
-- industry_commentary: news event → second-order implication → question
+- contrarian: common belief → the data says otherwise → what's actually true → question
+- story: specific situation with a programme → what the data revealed → the lesson → question
+- industry_commentary: news event → the economics/data behind it → second-order implication → question
 
 {f"SUGGESTED ANGLE: {suggested_angle}" if suggested_angle else ""}
 
-DATA ANGLES FOR THIS PILLAR (use at least one):
+SERGEY'S CORE EXPERTISE AREAS (the post MUST land on one of these):
+- Commission economics: how CPA, RevShare, Hybrid deals are priced, why most are wrong, what the LTV data actually says
+- Affiliate programme metrics: FTD rates, player LTV, conversion funnels, what to measure vs what operators actually measure
+- Data-driven decisions: the gap between having data and using data, why most affiliate reporting shows what happened but not what to do
+- Affiliate quality assessment: how to tell which affiliates are truly profitable, the 80/20 (really 90/10) rule in affiliate programmes
+- Product management thinking: prioritisation, building for behaviour change, what operators ask for vs what they need
+
+DATA ANGLES FOR THIS PILLAR (weave in at least one):
 {chr(10).join(f'- {a}' for a in pillar.get('data_angles', []))}
 
-{context_block if context_block else "No external content found — write from Sergey's experience and expertise."}
+{context_block if context_block else "No external content found — write purely from Sergey's expertise."}
+
+THE SPRINGBOARD TECHNIQUE — THIS IS HOW EVERY POST MUST WORK:
+1. START with the real industry news/event as a hook (1-2 lines max). This grounds the post in reality and shows Sergey is plugged in.
+2. PIVOT quickly: "But here's what most people miss..." or "The real question behind this is..." or "This made me think about something I keep seeing..."
+3. LAND on Sergey's expertise territory: a specific metric, benchmark, commission economics insight, data product observation, or product management principle.
+4. The NEWS should take up max 20% of the post. Sergey's DATA/METRICS/ECONOMICS INSIGHT should be 80%.
+5. End with a question about the metric/economics angle, NOT about the news event.
+
+EXAMPLES OF THE PATTERN:
+- News: "Google update hit affiliate sites" → Sergey's angle: "But the real metric operators should track is traffic source concentration per affiliate. In my experience, programmes where top affiliates get 80%+ from one channel have 3x higher revenue volatility."
+- News: "New regulation in Ontario" → Sergey's angle: "What nobody's modelling: the cost-per-acquisition in newly regulated markets is 2-4x higher in year one. The operators who win will be the ones recalculating their commission models backwards from realistic LTV."
+- News: "Affiliate media company acquired" → Sergey's angle: "This tells you something about affiliate programme economics. When media companies consolidate, the top 5% of affiliates gain negotiating power. The data shows programmes that lose a top-3 affiliate see revenue drop 25-40% in 90 days."
 
 CRITICAL INSTRUCTIONS:
-- Use the content above as INSPIRATION — not as a news summary or recap.
-- The post MUST include at least one specific data point or metric.
-- Share Sergey's perspective — triggered by what's happening, told through his lens.
-- Do NOT write a news recap. Write something that makes people think.
-- Match the voice and structure guidelines exactly.
+- The post MUST include at least one specific number, metric, or benchmark from Sergey's experience.
+- The post must FEEL like a data/product/economics person reacting to news — NOT like a journalist summarising it.
+- Sergey's voice: curious, analytical, sees the numbers behind everything. He doesn't just comment on what happened — he explains what the economics mean.
 - Keep it under 180 words (excluding hashtags). Count carefully.
 - Output ONLY the post text. No preamble, no explanation."""
 
@@ -779,17 +796,19 @@ PILLAR: {pillar_name}
 Rate each dimension from 1-10:
 
 1. HOOK STRENGTH: Would a Head of Affiliates stop scrolling for the opening line?
-2. DATA DENSITY: Does it include at least one specific number, metric, or benchmark?
+2. DATA DENSITY: Does it include at least one specific number, metric, or benchmark from real experience? (NOT just repeating a number from a news article — it should be an insight number)
 3. DUAL AUDIENCE: Would a PM outside iGaming still find this interesting?
-4. SPECIFICITY: Could only someone with deep affiliate industry experience have written this?
-5. QUESTION QUALITY: Does the closing question have teeth — would someone with real experience feel compelled to answer?
+4. EXPERTISE LANDING: Does the post land on Sergey's core territory — commission economics, affiliate metrics, data-driven decisions, product thinking? If the post stays on the surface of a news event without pivoting to metrics/economics insight, score LOW.
+5. QUESTION QUALITY: Does the closing question ask about a metric, benchmark, or economics angle — NOT just "what do you think about this news?"
+
+CRITICAL SCORING RULE: If the post reads like industry commentary or news reaction WITHOUT a clear pivot to data/metrics/economics expertise, the overall score MUST be below 6.0 regardless of writing quality.
 
 Respond in JSON only. No preamble:
 {{
   "hook_strength": 7,
   "data_density": 8,
   "dual_audience": 6,
-  "specificity": 9,
+  "expertise_landing": 9,
   "question_quality": 7,
   "overall": 7.4,
   "strengths": "what works well (1 sentence)",
@@ -810,7 +829,7 @@ Respond in JSON only. No preamble:
     except Exception as e:
         print(f"  ⚠️  Scoring failed: {e}")
         return {"overall": 7.0, "hook_strength": 7, "data_density": 7,
-                "dual_audience": 7, "specificity": 7, "question_quality": 7}
+                "dual_audience": 7, "expertise_landing": 7, "question_quality": 7}
 
 
 # ── TELEGRAM DELIVERY ──────────────────────────────────────────────────────────
@@ -839,7 +858,7 @@ def send_to_telegram(result: dict, scores: dict, top_stories: list[dict]):
         f"📊 Hook:{scores.get('hook_strength','?')} "
         f"Data:{scores.get('data_density','?')} "
         f"Dual:{scores.get('dual_audience','?')} "
-        f"Spec:{scores.get('specificity','?')} "
+        f"Expert:{scores.get('expertise_landing','?')} "
         f"Q:{scores.get('question_quality','?')}\n"
     )
 
@@ -901,7 +920,7 @@ def log_post(result: dict, scores: dict, top_stories: list[dict]):
         "score_hook": scores.get("hook_strength"),
         "score_data_density": scores.get("data_density"),
         "score_dual_audience": scores.get("dual_audience"),
-        "score_specificity": scores.get("specificity"),
+        "score_specificity": scores.get("expertise_landing"),
         "score_question_quality": scores.get("question_quality"),
         "score_overall": scores.get("overall"),
     }
@@ -1081,7 +1100,7 @@ def main():
         overall = scores.get("overall", 0)
         print(f"  Score: {overall}/10 — Hook:{scores.get('hook_strength','?')} "
               f"Data:{scores.get('data_density','?')} Dual:{scores.get('dual_audience','?')} "
-              f"Spec:{scores.get('specificity','?')} Q:{scores.get('question_quality','?')}")
+              f"Expert:{scores.get('expertise_landing','?')} Q:{scores.get('question_quality','?')}")
 
         if overall > best_overall:
             best_result = result
