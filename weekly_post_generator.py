@@ -1,35 +1,29 @@
 #!/usr/bin/env python3
 """
-LinkedIn Post Intelligence Engine — v2.0
-==========================================
-For Sergey Tadevosyan — iGaming Affiliate CPO
+LinkedIn Intelligence Engine — v3.0
+=====================================
+For Sergey Tadevosyan — CPO & Product Leader in iGaming
 
-Upgrades over v1:
-  • Editorial triage: AI ranks scraped stories by engagement potential (not just keywords)
-  • Data extraction: pulls specific numbers, metrics, entities from top articles
-  • Adaptive pillar selection: picks the pillar that fits the news cycle, not mechanical rotation
-  • Pre-publish scoring: rates each draft on 5 criteria, auto-regenerates weak posts
-  • Feedback loop: logs everything to Supabase, uses past performance to improve
-  • Weekly data briefing: aggregates industry intelligence for data-rich posts
-  • 3x/week cadence: Tuesday, Thursday, Saturday
+Repositioned: Sergey is a product leader who uses data to build and
+improve B2B products in the iGaming industry. Affiliates are ONE context
+he operates in, not the only topic. Posts cover product management, data-
+driven decisions, B2B platform building, team leadership, and broader
+iGaming industry dynamics — always through the lens of someone who
+actually ships products and reads the data.
 
 Environment variables:
-  ANTHROPIC_API_KEY   — Anthropic API key
-  TELEGRAM_BOT_TOKEN  — Telegram bot token
-  TELEGRAM_CHAT_ID    — Your Telegram chat ID
-  SUPABASE_URL        — Supabase project URL
-  SUPABASE_KEY        — Supabase service role key (or anon key)
-  REGENERATE          — "true" to skip scraping and regenerate from cache
+  ANTHROPIC_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID,
+  SUPABASE_URL, SUPABASE_KEY, REGENERATE (optional)
 """
 
 import os
 import re
 import json
-import time
+import random
 import feedparser
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime, timedelta
+from datetime import datetime
 import anthropic
 
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
@@ -41,124 +35,159 @@ SUPABASE_URL       = os.environ.get("SUPABASE_URL", "")
 SUPABASE_KEY       = os.environ.get("SUPABASE_KEY", "")
 
 CACHE_FILE = "/tmp/linkedin_post_cache.json"
-MIN_SCORE_THRESHOLD = 6.5  # Minimum quality score to send to Telegram
+MIN_SCORE_THRESHOLD = 6.5
 MAX_REGENERATION_ATTEMPTS = 3
 
 YOUTUBE_CHANNEL_HANDLE = "TrackingtheTruthPodcast"
 
 # ── CONTENT PILLARS ────────────────────────────────────────────────────────────
+# Reframed: Sergey is a PRODUCT LEADER first. iGaming is the industry context.
 
 CONTENT_PILLARS = [
     {
-        "id": "tracking_tech",
-        "name": "Affiliate Tracking & Technology",
-        "description": "Postbacks, S2S tracking, attribution, fraud detection, data quality — the infrastructure layer that makes everything else work.",
-        "weight": 10,  # Lower priority — Sergey's strength is data/product, not deep tech
-        "data_angles": [
-            "attribution accuracy rates",
-            "fraud detection false positive rates",
-            "tracking discrepancy percentages between platforms",
-            "cookie vs server-side conversion rate differences",
+        "id": "data_driven_product",
+        "name": "Data-Driven Product Decisions in iGaming",
+        "weight": 30,
+        "description": (
+            "How Sergey uses data to make product decisions in the iGaming affiliate space. "
+            "The gap between having dashboards and actually changing decisions. Metrics that "
+            "predict affiliate programme outcomes vs metrics that describe the past. Building "
+            "data products inside the affiliate ecosystem. Why most operator reporting is useless."
+        ),
+        "example_angles": [
+            "We built a reporting dashboard for operators with 30 metrics. They used 3. Here's what I learned about data products.",
+            "Most affiliate programmes track FTD count. The metric that actually predicts programme health is FTD-to-second-deposit rate.",
+            "The difference between data that's available and data that changes a decision — illustrated by how operators evaluate affiliate quality.",
+            "I stopped asking 'what do operators want to see?' and started asking 'what decision are they trying to make?' Everything changed.",
         ],
     },
     {
-        "id": "data_product",
-        "name": "Data, Metrics & Analytics in iGaming Affiliate",
-        "description": "Sergey's PRIMARY differentiator. Metrics that actually matter vs vanity metrics. What good affiliate reporting looks like. Turning raw data into decisions operators and affiliates can act on. BI and analytics as a product discipline. Commission economics and how to measure affiliate value. The gap between what's measured and what actually drives performance. Data quality as a product problem.",
-        "weight": 35,  # HIGHEST — this is Sergey's core territory
-        "data_angles": [
-            "FTD rate benchmarks across traffic types (SEO vs paid vs Telegram)",
-            "LTV by affiliate tier and how to actually calculate it",
-            "click-to-deposit conversion funnels — where the drop-offs are",
-            "reporting usage rates: what operators actually look at vs what they ignore",
-            "data quality error rates in affiliate platforms",
-            "the real cost of a depositing player across different affiliate channels",
-            "RevShare percentages: what's standard, what's generous, what's exploitative",
-            "average CPA rates across markets and how they correlate with player quality",
-            "how to tell if an affiliate is profitable — not just active",
-            "the metrics that predict affiliate churn before it happens",
+        "id": "product_leadership",
+        "name": "Product Leadership in a Complex B2B Industry",
+        "weight": 25,
+        "description": (
+            "How Sergey leads product teams to deliver value in iGaming — one of the most "
+            "complex regulated B2B industries. Prioritisation when every operator wants something "
+            "different. Saying no to features. Using modern PM craft (AI tools, outcome hypotheses, "
+            "experimentation) in an industry that's traditionally been feature-factory-driven."
+        ),
+        "example_angles": [
+            "When 50 operators each want a different commission model, here's how I decide what to build first.",
+            "The hardest 'no' I ever gave a client — and why the data backed me up.",
+            "Most iGaming B2B teams ship features. The best ones ship measurable outcomes. Here's the difference.",
+            "How I use AI tools in my daily product work — and where they completely fail in regulated industries.",
         ],
     },
     {
-        "id": "industry_dynamics",
-        "name": "Industry Dynamics & Where Things Are Heading",
-        "description": "Regulation impact, commission model trends, new affiliate channels (Telegram/WhatsApp/streamers), market consolidation, US vs EU dynamics.",
+        "id": "igaming_product_ecosystem",
+        "name": "iGaming Platforms & Product Ecosystem",
+        "weight": 20,
+        "description": (
+            "The product challenges of building for the iGaming affiliate ecosystem — "
+            "operators, affiliate platforms, data intelligence, payments. What makes great "
+            "B2B iGaming products vs mediocre ones. Multi-market, multi-regulatory complexity "
+            "as a product design problem. How AI is reshaping what's possible."
+        ),
+        "example_angles": [
+            "Why iGaming affiliate platforms are some of the hardest B2B products to build — and what PM lessons they teach.",
+            "Building for 50 regulatory markets isn't a compliance problem. It's a product architecture problem.",
+            "The affiliate platform your top affiliates actually want looks nothing like what most operators asked for.",
+            "AI in iGaming: the real use cases I'm seeing vs the conference buzzwords.",
+        ],
+    },
+    {
+        "id": "affiliate_economics",
+        "name": "Affiliate Programme Economics & Strategy",
         "weight": 15,
-        "data_angles": [
-            "regulatory market opening timelines",
-            "commission model split (RevShare vs CPA vs Hybrid) across markets",
-            "affiliate channel growth rates",
-            "M&A deal volumes in affiliate media",
+        "description": (
+            "The economics and strategy behind affiliate programmes — commission models, "
+            "player value, programme performance metrics. Seen through the lens of someone "
+            "who has been inside both an affiliate publisher and the software that powers programmes. "
+            "Always connected to a product or data insight."
+        ),
+        "example_angles": [
+            "Most CPA deals are priced using competitor rates, not player LTV data. That's a product opportunity.",
+            "The 90/10 rule: about 10% of affiliates drive 90% of value. How should that shape the product you build for them?",
+            "Commission models aren't commercial decisions. They're product design decisions. Here's why.",
+            "What I learned about affiliate economics by sitting on both sides of the table — and how it changed what I build.",
         ],
     },
     {
-        "id": "operator_affiliate",
-        "name": "Operator-Affiliate Economics & Relationships",
-        "description": "The economics of the operator-affiliate relationship. What affiliates actually want vs what operators think they want. Data transparency as a competitive advantage. Player quality vs traffic volume. Commission negotiation dynamics. Why programmes succeed or fail.",
-        "weight": 25,  # High — this is where Sergey's dual-sided experience shines
-        "data_angles": [
-            "affiliate churn rates by programme type",
-            "average time to first referral after signup",
-            "correlation between data transparency and affiliate retention",
-            "player quality metrics across affiliate tiers",
-            "what percentage of affiliates generate 80% of revenue",
-            "average number of active affiliates vs registered affiliates",
-            "how commission structure affects traffic quality",
-            "the real ROI of an affiliate manager's time by affiliate tier",
-        ],
-    },
-    {
-        "id": "product_decisions",
-        "name": "Product & Decision-Making in iGaming",
-        "description": "How to make better decisions with data. Prioritisation when everyone wants something different. The product management lens applied to affiliate operations — not software features, but how operators and affiliates make smarter commercial decisions using data and analytics.",
-        "weight": 15,
-        "data_angles": [
-            "feature adoption rates post-launch",
-            "migration timelines and performance impact",
-            "how often operators actually use the dashboards they asked for",
-            "the gap between what operators request and what moves their KPIs",
-            "decision velocity: how fast operators act on data vs how fast data goes stale",
+        "id": "modern_pm_in_igaming",
+        "name": "Modern Product Thinking Meets iGaming",
+        "weight": 10,
+        "description": (
+            "Where modern product management thinking (AI tools, outcome-driven development, "
+            "continuous discovery, experimentation) meets the reality of building for iGaming. "
+            "What works from the PM playbook, what doesn't, and what needs adapting."
+        ),
+        "example_angles": [
+            "I tried applying continuous discovery in iGaming B2B. Here's what worked and what crashed into regulatory reality.",
+            "The PM frameworks that break in regulated industries — and the ones that become more powerful.",
+            "Everyone's using AI to write user stories. I'm more interested in AI that predicts which affiliate will churn.",
+            "Outcome-driven roadmaps sound great until your biggest client needs a compliance feature by Tuesday.",
         ],
     },
 ]
 
 # ── NEWS SOURCES ───────────────────────────────────────────────────────────────
+# Two streams: iGaming industry news + modern product management thinking.
+# The iGaming sources provide the EXAMPLES and DATA.
+# The PM sources provide the FRAMEWORKS and MODERN THINKING.
 
 RSS_FEEDS = [
+    # iGaming & affiliate sources (the example set)
     ("iGB",              "https://igamingbusiness.com/feed/"),
-    ("Gambling Insider", "https://gamblinginsider.com/feed/"),
-    ("CalvinAyre",       "https://calvinayre.com/feed/"),
     ("AffiliateINSIDER", "https://affiliateinsider.com/feed/"),
     ("EGR Global",       "https://egrglobal.com/feed/"),
+    ("CalvinAyre",       "https://calvinayre.com/feed/"),
     ("SiGMA",            "https://sigma.world/news/feed/"),
+    ("Gambling Insider", "https://gamblinginsider.com/feed/"),
+    ("GPWA",             "https://www.gpwa.org/feed/"),
+    ("Affiliate Guard Dog", "https://www.affiliateguarddog.com/feed/"),
+    ("AffRoom",          "https://www.affroom.com/feed/"),
+    ("AffiliateFix",     "https://affiliatefix.com/forums/igaming.54/index.rss"),
+    # Product management & AI in PM sources (the thinking frameworks)
+    ("Lenny's Newsletter",  "https://www.lennysnewsletter.com/feed"),
+    ("SVPG",                "https://www.svpg.com/feed/"),
+    ("Mind the Product",    "https://www.mindtheproduct.com/feed/"),
+    ("ProductBoard Blog",   "https://www.productboard.com/blog/feed/"),
+    ("Shreyas Doshi",       "https://www.shreyasdoshi.com/feed"),
+    ("The Pragmatic Engineer", "https://newsletter.pragmaticengineer.com/feed"),
+    ("One Knight in Product", "https://www.oneknightinproduct.com/feed"),
 ]
 
-# Expanded keyword tiers — weighted by engagement potential
+# Keyword tiers — iGaming examples + PM lens
 KEYWORD_TIERS = {
-    # Tier 1: high engagement (3 points) — specific, actionable, data-rich topics
+    # Tier 1 (3 pts): where iGaming meets product/data thinking
     3: [
-        "commission", "revshare", "revenue share", "cpa deal", "hybrid deal",
-        "ltv", "lifetime value", "ftd", "first time deposit", "player value",
-        "fraud", "bonus abuse", "fake traffic", "quality score",
-        "postback", "s2s tracking", "attribution",
-        "affiliate programme audit", "affiliate retention",
+        "commission", "revshare", "revenue share", "cpa", "hybrid",
+        "ltv", "lifetime value", "ftd", "player value",
+        "affiliate programme", "affiliate software", "affiliate platform",
+        "data product", "data-driven", "metrics", "kpi", "benchmark",
+        "product management", "product strategy", "product leader", "cpo",
+        "prioritisation", "roadmap", "migration", "feature adoption",
+        "ai in product", "ai product management", "llm", "generative ai",
     ],
-    # Tier 2: strong relevance (2 points) — industry dynamics
+    # Tier 2 (2 pts): broader iGaming and PM craft
     2: [
-        "affiliate marketing", "affiliate programme", "affiliate platform",
-        "affiliate software", "affiliate tracking",
-        "partnermatrix", "myaffiliates", "netrefer", "income access",
-        "affilka", "cellxpert", "referon",
-        "operator", "player acquisition", "regulation",
-        "catena media", "better collective", "raketech", "gambling.com",
-        "telegram affiliates", "streamer", "influencer marketing",
+        "affiliate", "operator", "igaming", "online casino", "sportsbook",
+        "b2b", "saas", "platform", "product development",
+        "analytics", "bi ", "business intelligence", "roi", "conversion rate",
+        "regulation", "ukgc", "mga", "compliance", "licensing",
+        "acquisition", "merger", "partnership", "funding",
+        "catena media", "better collective", "raketech",
+        "partnermatrix", "myaffiliates", "netrefer", "affilka", "cellxpert",
+        "product-led", "outcome", "experiment", "hypothesis", "validation",
+        "ai agent", "copilot", "automation", "workflow",
     ],
-    # Tier 3: contextually relevant (1 point) — broad iGaming
+    # Tier 3 (1 pt): supporting context
     1: [
-        "igaming", "online casino", "online gambling", "sportsbook",
-        "ukgc", "mga", "compliance", "responsible gambling",
-        "data", "analytics", "reporting", "dashboard",
-        "game lounge", "retention", "deposit",
+        "gambling", "betting", "casino", "pam", "payment",
+        "telegram", "streamer", "influencer",
+        "team", "leadership", "hire", "culture", "cross-functional",
+        "ai ", "artificial intelligence", "machine learning",
+        "responsible gambling", "fraud",
     ],
 }
 
@@ -166,9 +195,7 @@ KEYWORD_TIERS = {
 # ── SUPABASE HELPERS ───────────────────────────────────────────────────────────
 
 def supabase_insert(table: str, data: dict) -> bool:
-    """Insert a row into Supabase. Returns True on success."""
     if not SUPABASE_URL or not SUPABASE_KEY:
-        print(f"  ⚠️  Supabase not configured — skipping {table} insert")
         return False
     try:
         resp = requests.post(
@@ -182,16 +209,13 @@ def supabase_insert(table: str, data: dict) -> bool:
             json=data,
             timeout=10,
         )
-        if resp.status_code in (200, 201):
-            return True
-        print(f"  ⚠️  Supabase insert to {table} failed: {resp.status_code} {resp.text[:200]}")
+        return resp.status_code in (200, 201)
     except Exception as e:
         print(f"  ⚠️  Supabase error: {e}")
     return False
 
 
 def supabase_query(table: str, select: str = "*", params: str = "") -> list:
-    """Query Supabase. Returns list of rows."""
     if not SUPABASE_URL or not SUPABASE_KEY:
         return []
     try:
@@ -208,76 +232,57 @@ def supabase_query(table: str, select: str = "*", params: str = "") -> list:
         )
         if resp.status_code == 200:
             return resp.json()
-    except Exception as e:
-        print(f"  ⚠️  Supabase query error: {e}")
+    except Exception:
+        pass
     return []
 
 
 # ── YOUTUBE SCRAPING ───────────────────────────────────────────────────────────
 
 def get_youtube_channel_id(handle: str) -> str | None:
-    """Resolve a YouTube @handle to a UC... channel ID."""
     url = f"https://www.youtube.com/@{handle}"
     try:
-        headers = {
-            "User-Agent": (
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/120.0.0.0 Safari/537.36"
-            )
-        }
+        headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
         resp = requests.get(url, headers=headers, timeout=10)
-        for pattern in [
-            r'"channelId":"(UC[a-zA-Z0-9_-]{22})"',
-            r'"externalId":"(UC[a-zA-Z0-9_-]{22})"',
-            r'channel/(UC[a-zA-Z0-9_-]{22})',
-        ]:
+        for pattern in [r'"channelId":"(UC[a-zA-Z0-9_-]{22})"', r'"externalId":"(UC[a-zA-Z0-9_-]{22})"']:
             match = re.search(pattern, resp.text)
             if match:
                 return match.group(1)
     except Exception as e:
-        print(f"  ⚠️  Could not resolve YouTube channel ID: {e}")
+        print(f"  ⚠️  YouTube channel resolve failed: {e}")
     return None
 
 
-def fetch_youtube_episodes(handle: str, max_episodes: int = 5) -> list[dict]:
-    """Fetch latest episodes from YouTube RSS."""
+def fetch_youtube_episodes(handle: str, max_episodes: int = 3) -> list[dict]:
     channel_id = get_youtube_channel_id(handle)
     if not channel_id:
-        print(f"  ⚠️  Could not get channel ID for @{handle}")
         return []
-
     rss_url = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
     episodes = []
     try:
         feed = feedparser.parse(rss_url)
         for entry in feed.entries[:max_episodes]:
-            title = entry.get("title", "")
             description = ""
             if hasattr(entry, "media_group"):
                 description = str(entry.media_group)[:500]
             elif entry.get("summary"):
-                description = BeautifulSoup(
-                    entry.get("summary", ""), "html.parser"
-                ).get_text()[:500]
-
+                description = BeautifulSoup(entry.get("summary", ""), "html.parser").get_text()[:500]
             episodes.append({
                 "source": "Tracking the Truth Podcast",
-                "title": title,
+                "title": entry.get("title", ""),
                 "summary": description.strip(),
                 "link": entry.get("link", ""),
                 "published": entry.get("published", ""),
                 "type": "podcast_episode",
             })
     except Exception as e:
-        print(f"  ⚠️  Failed to fetch YouTube RSS: {e}")
+        print(f"  ⚠️  YouTube RSS failed: {e}")
     return episodes
 
 
 # ── NEWS SCRAPING ──────────────────────────────────────────────────────────────
 
 def score_relevance(text: str) -> int:
-    """Score relevance using tiered keywords. Higher = more engaging potential."""
     text_lower = text.lower()
     score = 0
     for points, keywords in KEYWORD_TIERS.items():
@@ -287,8 +292,7 @@ def score_relevance(text: str) -> int:
     return score
 
 
-def fetch_rss_stories(max_per_feed: int = 8) -> list[dict]:
-    """Fetch and score stories from all RSS feeds."""
+def fetch_rss_stories(max_per_feed: int = 6) -> list[dict]:
     stories = []
     for source_name, url in RSS_FEEDS:
         try:
@@ -298,13 +302,10 @@ def fetch_rss_stories(max_per_feed: int = 8) -> list[dict]:
                 summary = entry.get("summary", "") or entry.get("description", "")
                 link = entry.get("link", "")
                 published = entry.get("published", "")
-
                 if summary:
                     summary = BeautifulSoup(summary, "html.parser").get_text()[:500]
-
                 combined = title + " " + summary
                 relevance = score_relevance(combined)
-
                 if relevance > 0:
                     stories.append({
                         "source": source_name,
@@ -317,16 +318,13 @@ def fetch_rss_stories(max_per_feed: int = 8) -> list[dict]:
                     })
         except Exception as e:
             print(f"  ⚠️  Failed to fetch {source_name}: {e}")
-
     stories.sort(key=lambda x: x["relevance_score"], reverse=True)
-    return stories[:15]  # Keep top 15 for AI triage
+    return stories[:15]
 
 
 def fetch_article_text(url: str, max_chars: int = 3000) -> str:
-    """Fetch full article text for deeper analysis."""
     try:
-        headers = {"User-Agent": "Mozilla/5.0"}
-        resp = requests.get(url, headers=headers, timeout=8)
+        resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=8)
         soup = BeautifulSoup(resp.text, "html.parser")
         for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
             tag.decompose()
@@ -338,10 +336,6 @@ def fetch_article_text(url: str, max_chars: int = 3000) -> str:
 # ── AI EDITORIAL TRIAGE ───────────────────────────────────────────────────────
 
 def editorial_triage(client: anthropic.Anthropic, stories: list[dict]) -> list[dict]:
-    """
-    AI-powered editorial judgment: rank stories by LinkedIn engagement potential.
-    Returns the top 5 stories with AI scores and reasoning.
-    """
     if not stories:
         return []
 
@@ -349,29 +343,28 @@ def editorial_triage(client: anthropic.Anthropic, stories: list[dict]) -> list[d
     for i, s in enumerate(stories, 1):
         stories_text += f"{i}. [{s['source']}] {s['title']}\n"
         if s.get("summary"):
-            stories_text += f"   {s['summary'][:200]}\n"
-        stories_text += "\n"
+            stories_text += f"   {s['summary'][:200]}\n\n"
 
-    prompt = f"""You are an editorial strategist for an iGaming affiliate industry LinkedIn account.
+    prompt = f"""You are an editorial strategist for a CPO and product leader who works in the iGaming industry.
 
-Rate each story below from 1-10 on LinkedIn engagement potential for this specific audience:
-- Primary: Heads of Affiliates, affiliate managers, operators, iGaming B2B vendors
-- Secondary: product managers, data professionals, curious generalists
+His audience: product managers, iGaming professionals, data people, B2B SaaS leaders, and curious generalists.
 
-Consider:
-- Does it have a clear "so what" for practitioners?
-- Does it contain or imply specific data points / metrics?
-- Is it debatable or just factual reporting?
-- Would a Head of Affiliates share an opinion on this?
-- Does it connect to a broader trend (not just a one-off event)?
+Rate each story 1-10 on how well it can serve as a SPRINGBOARD for a post about:
+- Product management and leadership
+- Data-driven decision making
+- B2B platform building and product strategy
+- iGaming industry economics and how products create value
+
+A story about "affiliate tracking" scores LOW unless it connects to a product or data decision.
+A story about "company acquisition" scores HIGH if it reveals something about product strategy or market dynamics.
+A story about "regulation change" scores HIGH if it has implications for how products need to be rebuilt.
 
 STORIES:
 {stories_text}
 
-Respond in JSON only. No preamble. Format:
+Respond in JSON only. No preamble:
 [
-  {{"index": 1, "score": 8, "reason": "...", "data_points": ["any numbers/metrics mentioned or implied"], "best_angle": "the provocative angle for a post"}},
-  ...
+  {{"index": 1, "score": 8, "reason": "...", "data_points": ["any numbers mentioned"], "product_angle": "how a CPO/product leader would react to this — the product/data insight, not the news itself"}}
 ]"""
 
     try:
@@ -381,59 +374,40 @@ Respond in JSON only. No preamble. Format:
             messages=[{"role": "user", "content": prompt}],
         )
         raw = message.content[0].text.strip()
-        # Clean potential markdown fencing
         raw = re.sub(r"^```json\s*", "", raw)
         raw = re.sub(r"\s*```$", "", raw)
         ratings = json.loads(raw)
-
-        # Merge AI ratings back into stories
         for rating in ratings:
             idx = rating.get("index", 0) - 1
             if 0 <= idx < len(stories):
                 stories[idx]["ai_score"] = rating.get("score", 0)
                 stories[idx]["ai_reason"] = rating.get("reason", "")
                 stories[idx]["ai_data_points"] = rating.get("data_points", [])
-                stories[idx]["ai_best_angle"] = rating.get("best_angle", "")
-
-        # Sort by AI score
+                stories[idx]["ai_product_angle"] = rating.get("product_angle", "")
         stories.sort(key=lambda x: x.get("ai_score", 0), reverse=True)
         return stories[:5]
-
     except Exception as e:
-        print(f"  ⚠️  Editorial triage failed: {e}")
-        # Fallback to keyword scoring
+        print(f"  ⚠️  Triage failed: {e}")
         return stories[:5]
 
 
 # ── DATA EXTRACTION ────────────────────────────────────────────────────────────
 
 def extract_article_intelligence(client: anthropic.Anthropic, article_text: str, title: str) -> dict:
-    """
-    Extract structured intelligence from a full article:
-    - Specific numbers, metrics, percentages
-    - Key claims or positions
-    - Named entities (companies, people, markets)
-    - The "so what" — why this matters for affiliates/operators
-    """
     if not article_text or len(article_text) < 100:
         return {}
-
-    prompt = f"""Extract structured intelligence from this iGaming industry article.
+    prompt = f"""Extract intelligence from this iGaming article for a CPO and product leader.
 
 TITLE: {title}
+TEXT: {article_text[:2500]}
 
-ARTICLE TEXT:
-{article_text[:2500]}
-
-Respond in JSON only. No preamble. Format:
+Respond in JSON only:
 {{
-  "data_points": ["specific numbers, percentages, dollar amounts, metrics mentioned"],
-  "key_claims": ["main arguments or positions taken in the article"],
+  "data_points": ["specific numbers, percentages, deal sizes, metrics mentioned — ONLY real ones from the text, do not invent any"],
+  "product_implications": ["what this means for product strategy, platform building, or data decisions"],
   "entities": ["companies, people, regulators, markets mentioned"],
-  "so_what": "one sentence: why this matters for affiliate programme operators or affiliates",
-  "post_hook": "a provocative one-liner that could open a LinkedIn post inspired by this"
+  "springboard": "one sentence: the product/data insight a CPO would extract from this"
 }}"""
-
     try:
         message = client.messages.create(
             model="claude-sonnet-4-20250514",
@@ -445,64 +419,46 @@ Respond in JSON only. No preamble. Format:
         raw = re.sub(r"\s*```$", "", raw)
         return json.loads(raw)
     except Exception as e:
-        print(f"  ⚠️  Data extraction failed: {e}")
+        print(f"  ⚠️  Extraction failed: {e}")
         return {}
 
 
 # ── ADAPTIVE PILLAR SELECTION ──────────────────────────────────────────────────
 
-def select_pillar(
-    client: anthropic.Anthropic,
-    top_stories: list[dict],
-    recent_pillars: list[str],
-) -> dict:
-    """
-    AI selects the best pillar for today based on:
-    1. What's happening in the news this week
-    2. Which pillars haven't been used recently (avoid repetition)
-    3. Which pillar + story combination has the highest engagement potential
-    """
+def select_pillar(client: anthropic.Anthropic, top_stories: list[dict], recent_pillars: list[str]) -> dict:
     pillar_descriptions = "\n".join(
-        f"- {p['id']} (weight: {p.get('weight', 15)}%): {p['name']} — {p['description']}"
+        f"- {p['id']} (weight: {p['weight']}%): {p['name']} — {p['description']}"
         for p in CONTENT_PILLARS
     )
-
     stories_summary = "\n".join(
-        f"- [{s['source']}] {s['title']} (AI score: {s.get('ai_score', '?')}, angle: {s.get('ai_best_angle', 'n/a')})"
+        f"- [{s['source']}] {s['title']} (score: {s.get('ai_score', '?')}, product angle: {s.get('ai_product_angle', 'n/a')})"
         for s in top_stories[:5]
-    )
-
+    ) if top_stories else "No stories available"
     recent_text = ", ".join(recent_pillars[-4:]) if recent_pillars else "none"
 
-    prompt = f"""You are selecting today's content pillar for Sergey Tadevosyan's iGaming affiliate LinkedIn account.
+    prompt = f"""Select today's content pillar for Sergey Tadevosyan's LinkedIn.
 
-CRITICAL CONTEXT ABOUT SERGEY:
-- His STRONGEST differentiator is data, metrics, analytics, and product thinking applied to iGaming affiliate.
-- He has worked INSIDE both an affiliate publisher (data products) AND affiliate management software (CPO). This dual perspective is extremely rare.
-- His best-performing post was about affiliate economics: FTD rates, LTV, player value, commission models.
-- He is NOT a deep technical tracking expert. He is a data product and analytics thinker who understands the business economics.
-- Posts about metrics, benchmarks, commission economics, "what the data actually shows", and data-driven decisions consistently outperform pure tech or pure industry news posts.
+SERGEY IS: A CPO and product leader in the iGaming industry. He builds B2B products, leads teams, uses data to make decisions. iGaming affiliates are ONE part of his world, not all of it.
 
-AVAILABLE PILLARS (with target frequency weights — higher = pick more often):
+PILLARS (higher weight = pick more often):
 {pillar_descriptions}
 
-THIS WEEK'S TOP STORIES (ranked by engagement potential):
+TOP STORIES:
 {stories_summary}
 
-RECENTLY USED PILLARS (avoid repeating): {recent_text}
+RECENT PILLARS (avoid repeating): {recent_text}
 
-SELECTION RULES:
-1. STRONGLY prefer pillars with higher weights — data_product (35%) and operator_affiliate (25%) should be selected ~60% of the time combined
-2. Even when news is about tracking tech or regulation, ask: "Can I frame this through a data/metrics/economics lens instead?" If yes, pick data_product or operator_affiliate.
-3. Only pick tracking_tech if the story is SPECIFICALLY about a technical tracking problem that cannot be framed as a data/analytics question.
-4. Always find the angle that lets Sergey talk about metrics, benchmarks, what the numbers show, and what decisions should change as a result.
+RULES:
+1. Respect the weights — data_driven_product (30%) and product_leadership (25%) should dominate
+2. The post should feel like a CPO wrote it, not an affiliate manager
+3. Even affiliate-related news should be framed through a product/data lens
+4. Pick the pillar where Sergey can share the deepest, most original insight
 
-Respond in JSON only. No preamble:
+JSON only:
 {{
   "pillar_id": "...",
-  "reasoning": "why this pillar fits the news cycle and audience right now",
-  "suggested_story_index": 0,
-  "suggested_angle": "the specific angle to take — preferably involving a metric, benchmark, or data insight"
+  "reasoning": "...",
+  "suggested_angle": "the specific product/data insight to build the post around"
 }}"""
 
     try:
@@ -515,35 +471,25 @@ Respond in JSON only. No preamble:
         raw = re.sub(r"^```json\s*", "", raw)
         raw = re.sub(r"\s*```$", "", raw)
         result = json.loads(raw)
-
-        # Find the full pillar object
-        pillar_obj = next(
-            (p for p in CONTENT_PILLARS if p["id"] == result.get("pillar_id")),
-            None,
-        )
+        pillar_obj = next((p for p in CONTENT_PILLARS if p["id"] == result.get("pillar_id")), None)
         if pillar_obj:
             result["pillar"] = pillar_obj
             return result
     except Exception as e:
-        print(f"  ⚠️  Adaptive pillar selection failed: {e}")
+        print(f"  ⚠️  Pillar selection failed: {e}")
 
-    # Fallback: mechanical rotation (same as v1)
+    # Fallback
     week = datetime.now().isocalendar()[1]
     dow = datetime.now().weekday()
-    day_offset = {1: 0, 3: 1, 5: 2}.get(dow, 0)  # Tue=0, Thu=1, Sat=2
+    day_offset = {1: 0, 3: 1, 5: 2}.get(dow, 0)
     index = (week * 3 + day_offset) % len(CONTENT_PILLARS)
-    return {
-        "pillar": CONTENT_PILLARS[index],
-        "pillar_id": CONTENT_PILLARS[index]["id"],
-        "reasoning": "Mechanical rotation fallback",
-        "suggested_angle": "",
-    }
+    return {"pillar": CONTENT_PILLARS[index], "pillar_id": CONTENT_PILLARS[index]["id"],
+            "reasoning": "fallback", "suggested_angle": ""}
 
 
-# ── FEEDBACK LOOP: GET PAST PERFORMANCE ────────────────────────────────────────
+# ── FEEDBACK LOOP ──────────────────────────────────────────────────────────────
 
 def get_top_performers() -> str:
-    """Fetch top 3 past posts by engagement rate to include in the prompt."""
     rows = supabase_query(
         "post_performance",
         select="hook_line,pillar,engagement_rate,comments,format_type,has_data_point",
@@ -551,81 +497,71 @@ def get_top_performers() -> str:
     )
     if not rows:
         return ""
-
-    block = "YOUR TOP-PERFORMING POSTS (learn from these patterns):\n\n"
+    block = "YOUR TOP-PERFORMING POSTS (learn from these):\n\n"
     for i, r in enumerate(rows, 1):
         block += f"{i}. Hook: \"{r.get('hook_line', 'n/a')}\"\n"
         block += f"   Pillar: {r.get('pillar', '?')} | Format: {r.get('format_type', '?')} | "
-        block += f"Had data: {'Yes' if r.get('has_data_point') else 'No'} | "
+        block += f"Data: {'Yes' if r.get('has_data_point') else 'No'} | "
         block += f"Engagement: {r.get('engagement_rate', '?')}% | Comments: {r.get('comments', '?')}\n\n"
     return block
 
 
 def get_recent_pillars() -> list[str]:
-    """Get the last 4 pillar IDs used."""
-    rows = supabase_query(
-        "post_performance",
-        select="pillar",
-        params="order=post_date.desc&limit=4",
-    )
+    rows = supabase_query("post_performance", select="pillar", params="order=post_date.desc&limit=4")
     return [r.get("pillar", "") for r in rows]
 
 
-# ── POST GENERATION ────────────────────────────────────────────────────────────
+# ── THE SYSTEM PROMPT ──────────────────────────────────────────────────────────
 
-SYSTEM_PROMPT = """You are a ghostwriter for Sergey Tadevosyan — a product leader in the iGaming affiliate industry, based in Malta.
+SYSTEM_PROMPT = """You are a ghostwriter for Sergey Tadevosyan — a CPO and product leader based in Malta, working in the iGaming affiliate industry.
 
-ABOUT SERGEY:
-- Has worked on both sides of the affiliate relationship: inside a large affiliate publisher (data products) and in affiliate management software (CPO).
-- His rare combination: deep iGaming affiliate industry knowledge + data product management expertise. Most people in this industry have one or the other. He has both.
-- Data product thinking is THE CORE of his identity — he thinks in metrics, data flows, benchmarks, economics, and what makes a number actionable vs decorative.
-- He is a product management leader who applies analytical thinking to the iGaming affiliate industry. He is NOT primarily a tracking technology expert.
-- His strongest topics: affiliate programme economics (commission models, FTD rates, LTV, player value), data-driven decision making, what metrics actually matter, why most reporting is useless, and the gap between what operators measure and what drives performance.
-- Personal brand only — NEVER mention any company name, product name, or employer.
+WHO SERGEY IS:
+- Chief Product Officer who builds B2B products in the iGaming affiliate space.
+- He is an AUTHORITY on iGaming affiliate business — one of the few people who has worked inside both a major affiliate publisher (building data products) AND in affiliate management software (as CPO).
+- His superpower: he sees the affiliate industry through a product management and data lens. He doesn't just know how affiliate programmes work — he knows how to build PRODUCTS and SYSTEMS that make them work better.
+- He uses data to make decisions, leads product teams, and cares about modern product craft (AI in PM, outcome-driven development, experimentation).
+- Personal brand only — NEVER mention any company, product, or employer by name.
 
-LENGTH — CRITICAL:
-- Maximum 150-180 words (excluding hashtags). Count carefully. No exceptions.
-- Fewer, punchier lines beat comprehensive ones.
+THE GOLDEN RULE — READ THIS CAREFULLY:
+- iGaming affiliate is the WORLD Sergey operates in. All examples, data, stories come from this world.
+- Product management, data, leadership is the LENS through which he sees that world.
+- The post should feel like: "a product leader who deeply understands iGaming affiliate business shares how he thinks about [topic]"
+- NOT like: "an affiliate manager who read some PM articles" or "a PM who knows nothing about iGaming"
+- 70% of posts should be understandable by a product manager who doesn't know iGaming deeply — but the examples and data are ALWAYS from iGaming affiliate.
+- NEVER use examples from fintech, e-commerce, or generic SaaS. ALWAYS iGaming affiliate examples.
 
-VOICE & STYLE:
-- Open with a short observation, question, or surprising statement — NEVER a bold claim
-- Build gradually: context → insight → question. Max 4-5 paragraphs.
-- Short paragraphs. Often a single sentence. Never more than 2-3 sentences in one block.
-- Tone: curious, confident, accessible. Briefly explains iGaming terms inline.
-- Ends with one genuine open question — never a CTA to follow/like.
-- Emojis: max 1 per post, only if it adds meaning. Often zero is better.
-- Hashtags: exactly 3 on the last line. Always #iGaming and #iGamingAffiliateMarketing, vary the third (#DataProducts #ProductManagement #AffiliateMarketing #BusinessIntelligence #iGamingAffiliate).
-- NEVER mention any company, platform, software product, or employer by name.
+WHAT SERGEY WRITES ABOUT:
+1. Product management craft — applied to iGaming affiliate: prioritisation, saying no, building for behaviour change, shipping outcomes. Examples: "When 50 operators each want a different commission model, here's how I prioritise..."
+2. Data-driven decisions — in the affiliate context: what metrics predict programme success, why most affiliate reporting fails, how data changes product roadmaps. Examples: "We had a dashboard showing 30 metrics. Operators used 3..."
+3. AI & modern PM — applied to iGaming: how AI changes affiliate fraud detection, how LLMs could transform operator reporting, what AI means for product teams in regulated industries.
+4. iGaming affiliate economics — through product eyes: commission models as product design problems, player value as a data product challenge, programme performance as a system design question.
+5. Team leadership — with iGaming context: building product culture in B2B iGaming, hiring PMs for regulated industries, cross-functional work with compliance teams.
 
-DATA-DRIVEN POST RULE — CRITICAL:
-- Every post MUST include at least ONE specific data point, metric, percentage, benchmark, or numerical comparison.
-- If the source material contains data → use it naturally.
-- If no data is available → use a credible illustrative number from Sergey's experience (e.g., "In my experience, about 60% of operators..." or "The average RevShare deal sits between 25-40%").
-- Posts with specific numbers consistently outperform posts without them.
+LENGTH: 150-180 words max (excluding hashtags). No exceptions. Count carefully.
 
-SERGEY'S FAVOURITE ANGLES (use these often):
-- "Here's a number most people in the industry don't know" → explain what it means → what decisions should change
-- "Everyone measures X, but the metric that actually predicts Y is Z"
-- "The economics behind [thing] are simpler than people think" → break it down with numbers
-- "I've seen this pattern across dozens of affiliate programmes" → the data-backed observation
-- "Most operators track [vanity metric]. The ones that outperform track [real metric]."
+VOICE:
+- Curious, confident, grounded in real experience
+- Short paragraphs. Often single sentences.
+- Opens with an observation or question — NEVER a bold claim
+- Builds gradually. Names the insight clearly. Ends with a genuine question.
+- Emojis: max 1, often zero
+- Hashtags: exactly 3 on last line. Rotate from: #ProductManagement #iGaming #DataProducts #B2BSaaS #ProductLeadership #iGamingAffiliateMarketing #AffiliateMarketing
+
+DATA & NUMBERS RULE:
+- Include at least one specific number or benchmark per post.
+- If from a source article: reference vaguely ("Recent industry data shows...", "A report this week noted...")
+- If from Sergey's experience: frame it ("In my experience...", "Across programmes I've worked with...", "In most cases I've seen...")
+- NEVER invent precise statistics. "About 60-70%" is honest. "63.4%" without a source is not.
 
 WHAT TO AVOID:
-- Pure technical tracking posts about postbacks, cookies, server-side implementation details
-- Generic industry news recaps with no data or analytical angle
-- Posts that read like a software vendor wrote them
-- Posts that could have been written by anyone in any industry — MUST have iGaming affiliate specifics
-- Opening with "In today's rapidly evolving..." or any generic LinkedIn opener
+- Generic SaaS, fintech, or e-commerce examples — ALWAYS iGaming affiliate
+- Pure affiliate-manager-speak with no product thinking visible
+- Posts about tracking technology implementation details (postbacks, cookies, S2S)
+- Summarising news without a product/data/leadership insight
+- Generic LinkedIn platitudes
+- Posts where the ENTIRE substance is about a news event
 
-POST FORMAT VARIETY:
-Rotate between these formats (the prompt will specify which to use):
-- Observation: notice a data pattern → explain why it matters → question
-- Data insight: one specific number → what it means → what most people miss → question
-- Contrarian: common belief → the data says otherwise → what's actually true → question
-- Story: specific situation with a client/programme → what the data revealed → the lesson → question
-- Industry commentary: news event → the economics/data behind it → second-order implication → question
-
-BEST POST EXAMPLE (match this feel — notice the economics focus, not tech):
+EXAMPLE POST — notice: iGaming affiliate example, product thinking lens:
 "Many people work in iGaming affiliates.
 
 But surprisingly few understand how the economics actually work.
@@ -643,72 +579,53 @@ What metric do you trust most when evaluating affiliate quality?
 
 #iGaming #iGamingAffiliateMarketing #ProductManagement"
 
-THE TEST: Would a Head of Affiliates at a mid-tier operator AND a data-minded PM from outside iGaming both find this worth reading?"""
+THE TEST: Would a product leader at any B2B company find the THINKING interesting? Would an iGaming insider find the EXAMPLES credible? Both must be true."""
 
 
-POST_FORMATS = [
-    "observation",
-    "data_insight",
-    "contrarian",
-    "story",
-    "industry_commentary",
-]
-
+# ── POST FORMATS ───────────────────────────────────────────────────────────────
 
 def select_format() -> str:
-    """Select post format, biasing toward data_insight and observation."""
     weights = {
-        "observation": 25,
-        "data_insight": 35,
-        "contrarian": 15,
-        "story": 15,
-        "industry_commentary": 10,
+        "observation": 25,       # notice a pattern → why it matters
+        "data_insight": 30,      # a number → what it means → what people miss
+        "product_lesson": 20,    # something I learned building products
+        "contrarian": 15,        # common belief → why the data disagrees
+        "industry_lens": 10,     # news event → product/data implication
     }
-    import random
     population = []
     for fmt, weight in weights.items():
         population.extend([fmt] * weight)
     return random.choice(population)
 
 
-def generate_post(
-    client: anthropic.Anthropic,
-    top_stories: list[dict],
-    pillar_selection: dict,
-    article_intel: dict,
-    performance_context: str,
-    post_format: str,
-) -> dict:
-    """Generate a LinkedIn post with full intelligence context."""
+# ── POST GENERATION ────────────────────────────────────────────────────────────
 
+def generate_post(client, top_stories, pillar_selection, article_intel, performance_context, post_format):
     pillar = pillar_selection["pillar"]
     suggested_angle = pillar_selection.get("suggested_angle", "")
 
-    # Build rich context block
+    # Build context block
     context_block = ""
-
     if top_stories:
-        context_block += "TOP STORIES THIS WEEK (ranked by engagement potential):\n\n"
-        for i, s in enumerate(top_stories[:4], 1):
+        context_block += "INDUSTRY NEWS THIS WEEK (use as springboard, not as topic):\n\n"
+        for i, s in enumerate(top_stories[:3], 1):
             context_block += f"{i}. [{s['source']}] {s['title']}\n"
-            if s.get("ai_best_angle"):
-                context_block += f"   Best angle: {s['ai_best_angle']}\n"
+            if s.get("ai_product_angle"):
+                context_block += f"   Product angle: {s['ai_product_angle']}\n"
             if s.get("ai_data_points"):
-                context_block += f"   Data points: {', '.join(s['ai_data_points'])}\n"
+                context_block += f"   Real data from article: {', '.join(s['ai_data_points'])}\n"
             if s.get("summary"):
                 context_block += f"   Summary: {s['summary'][:150]}\n"
             context_block += "\n"
 
     if article_intel:
-        context_block += "DEEP INTEL FROM TOP ARTICLE:\n"
+        context_block += "EXTRACTED INTELLIGENCE FROM TOP ARTICLE:\n"
         if article_intel.get("data_points"):
-            context_block += f"  Data points: {', '.join(article_intel['data_points'])}\n"
-        if article_intel.get("key_claims"):
-            context_block += f"  Key claims: {', '.join(article_intel['key_claims'][:3])}\n"
-        if article_intel.get("so_what"):
-            context_block += f"  So what: {article_intel['so_what']}\n"
-        if article_intel.get("post_hook"):
-            context_block += f"  Suggested hook: {article_intel['post_hook']}\n"
+            context_block += f"  Real data points (use these — they're from the source): {', '.join(article_intel['data_points'])}\n"
+        if article_intel.get("product_implications"):
+            context_block += f"  Product implications: {', '.join(article_intel['product_implications'][:2])}\n"
+        if article_intel.get("springboard"):
+            context_block += f"  CPO insight: {article_intel['springboard']}\n"
         context_block += "\n"
 
     if performance_context:
@@ -716,47 +633,40 @@ def generate_post(
 
     user_prompt = f"""Write one LinkedIn post for Sergey.
 
-CONTENT PILLAR: {pillar['name']} — {pillar['description']}
+PILLAR: {pillar['name']} — {pillar['description']}
 
-POST FORMAT: {post_format}
-- observation: notice a data pattern → explain why it matters → question
-- data_insight: open with one specific number → what it means → what most people miss → question
-- contrarian: common belief → the data says otherwise → what's actually true → question
-- story: specific situation with a programme → what the data revealed → the lesson → question
-- industry_commentary: news event → the economics/data behind it → second-order implication → question
+FORMAT: {post_format}
+- observation: notice a pattern in iGaming/affiliate → explain with product/data thinking → question
+- data_insight: a real number from iGaming affiliate → what it means for product decisions → question
+- product_lesson: something learned building iGaming products → what happened → the PM insight → question
+- contrarian: common iGaming belief → why the data/product thinking disagrees → question
+- industry_lens: iGaming news (brief) → product/data implication → question
 
-{f"SUGGESTED ANGLE: {suggested_angle}" if suggested_angle else ""}
+SUGGESTED ANGLE: {suggested_angle if suggested_angle else "Choose the strongest angle from the pillar examples."}
 
-SERGEY'S CORE EXPERTISE AREAS (the post MUST land on one of these):
-- Commission economics: how CPA, RevShare, Hybrid deals are priced, why most are wrong, what the LTV data actually says
-- Affiliate programme metrics: FTD rates, player LTV, conversion funnels, what to measure vs what operators actually measure
-- Data-driven decisions: the gap between having data and using data, why most affiliate reporting shows what happened but not what to do
-- Affiliate quality assessment: how to tell which affiliates are truly profitable, the 80/20 (really 90/10) rule in affiliate programmes
-- Product management thinking: prioritisation, building for behaviour change, what operators ask for vs what they need
+PILLAR EXAMPLE ANGLES:
+{chr(10).join(f'- {a}' for a in pillar.get('example_angles', []))}
 
-DATA ANGLES FOR THIS PILLAR (weave in at least one):
-{chr(10).join(f'- {a}' for a in pillar.get('data_angles', []))}
+{context_block if context_block else "No news found — write from product leadership experience in iGaming affiliate."}
 
-{context_block if context_block else "No external content found — write purely from Sergey's expertise."}
+THE IDENTITY RULE — CRITICAL:
+- Sergey is an iGaming affiliate authority who THINKS like a product leader.
+- ALL examples must come from iGaming affiliate: operators, affiliates, commission models, player data, affiliate platforms, programme management.
+- NEVER use generic SaaS, fintech, or e-commerce examples.
+- But the INSIGHT should be a product management or data lesson that any PM would find valuable.
+- Pattern: "Here's something happening in iGaming affiliate [specific example] → here's the product/data lesson [universal insight] → question"
 
-THE SPRINGBOARD TECHNIQUE — THIS IS HOW EVERY POST MUST WORK:
-1. START with the real industry news/event as a hook (1-2 lines max). This grounds the post in reality and shows Sergey is plugged in.
-2. PIVOT quickly: "But here's what most people miss..." or "The real question behind this is..." or "This made me think about something I keep seeing..."
-3. LAND on Sergey's expertise territory: a specific metric, benchmark, commission economics insight, data product observation, or product management principle.
-4. The NEWS should take up max 20% of the post. Sergey's DATA/METRICS/ECONOMICS INSIGHT should be 80%.
-5. End with a question about the metric/economics angle, NOT about the news event.
+THE SPRINGBOARD TECHNIQUE:
+1. If using news: mention it in 1-2 lines max (20%). Then PIVOT to a product/data insight illustrated with iGaming affiliate examples (80%).
+2. If no relevant news: open with a direct observation from building products for the iGaming affiliate space.
+3. End with a question about the PRODUCT/DATA insight, framed with iGaming context.
 
-EXAMPLES OF THE PATTERN:
-- News: "Google update hit affiliate sites" → Sergey's angle: "But the real metric operators should track is traffic source concentration per affiliate. In my experience, programmes where top affiliates get 80%+ from one channel have 3x higher revenue volatility."
-- News: "New regulation in Ontario" → Sergey's angle: "What nobody's modelling: the cost-per-acquisition in newly regulated markets is 2-4x higher in year one. The operators who win will be the ones recalculating their commission models backwards from realistic LTV."
-- News: "Affiliate media company acquired" → Sergey's angle: "This tells you something about affiliate programme economics. When media companies consolidate, the top 5% of affiliates gain negotiating power. The data shows programmes that lose a top-3 affiliate see revenue drop 25-40% in 90 days."
+DATA SOURCING:
+- From article → "Recent industry data shows...", "A report this week noted..."
+- From experience → "In my experience...", "Across programmes I've worked with..."
+- NEVER state precise numbers without framing. No orphan statistics.
 
-CRITICAL INSTRUCTIONS:
-- The post MUST include at least one specific number, metric, or benchmark from Sergey's experience.
-- The post must FEEL like a data/product/economics person reacting to news — NOT like a journalist summarising it.
-- Sergey's voice: curious, analytical, sees the numbers behind everything. He doesn't just comment on what happened — he explains what the economics mean.
-- Keep it under 180 words (excluding hashtags). Count carefully.
-- Output ONLY the post text. No preamble, no explanation."""
+Output ONLY the post text. No preamble."""
 
     message = client.messages.create(
         model="claude-sonnet-4-20250514",
@@ -764,11 +674,8 @@ CRITICAL INSTRUCTIONS:
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_prompt}],
     )
-
-    post_text = message.content[0].text.strip()
-
     return {
-        "post": post_text,
+        "post": message.content[0].text.strip(),
         "pillar_id": pillar["id"],
         "pillar_name": pillar["name"],
         "format": post_format,
@@ -779,12 +686,8 @@ CRITICAL INSTRUCTIONS:
 
 # ── POST SCORING ───────────────────────────────────────────────────────────────
 
-def score_post(client: anthropic.Anthropic, post_text: str, pillar_name: str) -> dict:
-    """
-    AI quality gate: score the post on 5 dimensions before delivery.
-    Returns scores + overall + improvement suggestions.
-    """
-    prompt = f"""Score this LinkedIn post for an iGaming affiliate industry audience.
+def score_post(client, post_text, pillar_name):
+    prompt = f"""Score this LinkedIn post. The author is a CPO and product leader in iGaming.
 
 POST:
 ---
@@ -793,27 +696,26 @@ POST:
 
 PILLAR: {pillar_name}
 
-Rate each dimension from 1-10:
+Rate 1-10:
+1. HOOK: Would a product leader stop scrolling?
+2. DATA INTEGRITY: Does it include a real number AND frame where it comes from (source or experience)? Orphan stats with no framing = low score.
+3. PRODUCT DEPTH: Does it land on a genuine product management, data, or platform insight — not just industry commentary?
+4. UNIVERSAL APPEAL: Would a PM at Stripe or Shopify find this interesting, while an iGaming insider finds it credible?
+5. QUESTION: Does the closing question invite debate about product/data decisions?
 
-1. HOOK STRENGTH: Would a Head of Affiliates stop scrolling for the opening line?
-2. DATA DENSITY: Does it include at least one specific number, metric, or benchmark from real experience? (NOT just repeating a number from a news article — it should be an insight number)
-3. DUAL AUDIENCE: Would a PM outside iGaming still find this interesting?
-4. EXPERTISE LANDING: Does the post land on Sergey's core territory — commission economics, affiliate metrics, data-driven decisions, product thinking? If the post stays on the surface of a news event without pivoting to metrics/economics insight, score LOW.
-5. QUESTION QUALITY: Does the closing question ask about a metric, benchmark, or economics angle — NOT just "what do you think about this news?"
+CRITICAL: If the post reads like iGaming industry news with numbers sprinkled in — but lacks a real product/data insight — overall MUST be below 6.0.
 
-CRITICAL SCORING RULE: If the post reads like industry commentary or news reaction WITHOUT a clear pivot to data/metrics/economics expertise, the overall score MUST be below 6.0 regardless of writing quality.
-
-Respond in JSON only. No preamble:
+JSON only:
 {{
   "hook_strength": 7,
-  "data_density": 8,
-  "dual_audience": 6,
-  "expertise_landing": 9,
+  "data_integrity": 8,
+  "product_depth": 6,
+  "universal_appeal": 7,
   "question_quality": 7,
-  "overall": 7.4,
-  "strengths": "what works well (1 sentence)",
-  "weaknesses": "what could be stronger (1 sentence)",
-  "suggestion": "one specific edit that would improve engagement"
+  "overall": 7.0,
+  "strengths": "...",
+  "weaknesses": "...",
+  "suggestion": "one specific edit"
 }}"""
 
     try:
@@ -828,89 +730,61 @@ Respond in JSON only. No preamble:
         return json.loads(raw)
     except Exception as e:
         print(f"  ⚠️  Scoring failed: {e}")
-        return {"overall": 7.0, "hook_strength": 7, "data_density": 7,
-                "dual_audience": 7, "expertise_landing": 7, "question_quality": 7}
+        return {"overall": 7.0, "hook_strength": 7, "data_integrity": 7,
+                "product_depth": 7, "universal_appeal": 7, "question_quality": 7}
 
 
 # ── TELEGRAM DELIVERY ──────────────────────────────────────────────────────────
 
-def send_to_telegram(result: dict, scores: dict, top_stories: list[dict]):
-    """Send the generated post to Telegram with quality metadata."""
+def send_to_telegram(result, scores, top_stories):
     post = result["post"]
-    pillar_name = result["pillar_name"]
-    generated_at = result["generated_at"]
-    post_format = result["format"]
-
     day_name = datetime.now().strftime("%A")
-    overall_score = scores.get("overall", "?")
-    score_emoji = "🟢" if overall_score >= 7.5 else "🟡" if overall_score >= 6.5 else "🔴"
+    overall = scores.get("overall", "?")
+    score_emoji = "🟢" if overall >= 7.5 else "🟡" if overall >= 6.5 else "🔴"
 
     header = (
         f"✍️ *LinkedIn Post Ready — {day_name}*\n"
-        f"_{generated_at}_\n"
-        f"Pillar: _{pillar_name}_\n"
-        f"Format: _{post_format}_\n"
-        f"{score_emoji} Quality: *{overall_score}/10*\n"
-    )
-
-    # Score breakdown
-    header += (
+        f"_{result['generated_at']}_\n"
+        f"Pillar: _{result['pillar_name']}_\n"
+        f"Format: _{result['format']}_\n"
+        f"{score_emoji} Quality: *{overall}/10*\n"
         f"📊 Hook:{scores.get('hook_strength','?')} "
-        f"Data:{scores.get('data_density','?')} "
-        f"Dual:{scores.get('dual_audience','?')} "
-        f"Expert:{scores.get('expertise_landing','?')} "
+        f"Data:{scores.get('data_integrity','?')} "
+        f"Product:{scores.get('product_depth','?')} "
+        f"Universal:{scores.get('universal_appeal','?')} "
         f"Q:{scores.get('question_quality','?')}\n"
     )
-
     if scores.get("suggestion"):
         header += f"💡 _{scores['suggestion']}_\n"
-
-    # Source attribution
     if top_stories:
-        top = top_stories[0]
-        header += f"Inspired by: [{top['source']}]({top.get('link','')})\n"
+        header += f"Inspired by: [{top_stories[0]['source']}]({top_stories[0].get('link','')})\n"
 
-    separator = "\n─────────────────────\n\n"
-    footer = "\n\n─────────────────────\n✅ Copy and post on LinkedIn\n⏰ Best time: 8–10am CET"
+    full_message = header + "\n─────────────────────\n\n" + post + "\n\n─────────────────────\n✅ Copy and post on LinkedIn\n⏰ Best time: 8–10am CET"
 
-    full_message = header + separator + post + footer
-
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": TELEGRAM_CHAT_ID,
-        "text": full_message,
-        "parse_mode": "Markdown",
-        "disable_web_page_preview": True,
-    }
-
-    resp = requests.post(url, json=payload, timeout=10)
-
+    resp = requests.post(
+        f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+        json={"chat_id": TELEGRAM_CHAT_ID, "text": full_message,
+              "parse_mode": "Markdown", "disable_web_page_preview": True},
+        timeout=10,
+    )
     if resp.status_code == 200:
-        print("✅ Post sent to Telegram.")
+        print("✅ Sent to Telegram.")
     else:
-        print(f"❌ Telegram error {resp.status_code}: {resp.text}")
-        print("\n" + "=" * 60)
-        print("POST (copy from here if Telegram failed):")
-        print("=" * 60)
+        print(f"❌ Telegram error: {resp.status_code}")
         print(post)
 
 
-# ── LOG TO SUPABASE ────────────────────────────────────────────────────────────
+# ── LOGGING ────────────────────────────────────────────────────────────────────
 
-def log_post(result: dict, scores: dict, top_stories: list[dict]):
-    """Log the generated post and scores to Supabase for the feedback loop."""
+def log_post(result, scores, top_stories):
     post_text = result["post"]
-    hook_line = post_text.split("\n")[0][:200] if post_text else ""
-
-    # Detect if post has a data point
     has_data = bool(re.search(r'\d+[\.\,]?\d*\s*(%|percent|x\b|times|million|billion|€|\$|£)', post_text, re.IGNORECASE))
-
     data = {
         "post_date": datetime.now().strftime("%Y-%m-%d"),
         "day_of_week": datetime.now().strftime("%A"),
         "pillar": result.get("pillar_id", ""),
-        "format_type": result.get("format", "observation"),
-        "hook_line": hook_line,
+        "format_type": result.get("format", ""),
+        "hook_line": post_text.split("\n")[0][:200] if post_text else "",
         "post_text": post_text,
         "has_data_point": has_data,
         "source_articles": json.dumps([
@@ -918,22 +792,20 @@ def log_post(result: dict, scores: dict, top_stories: list[dict]):
             for s in top_stories[:3]
         ]) if top_stories else None,
         "score_hook": scores.get("hook_strength"),
-        "score_data_density": scores.get("data_density"),
-        "score_dual_audience": scores.get("dual_audience"),
-        "score_specificity": scores.get("expertise_landing"),
+        "score_data_density": scores.get("data_integrity"),
+        "score_dual_audience": scores.get("universal_appeal"),
+        "score_specificity": scores.get("product_depth"),
         "score_question_quality": scores.get("question_quality"),
         "score_overall": scores.get("overall"),
     }
-
     if supabase_insert("post_performance", data):
-        print("  📊 Post logged to Supabase")
+        print("  📊 Logged to Supabase")
 
 
-def log_scrape(stories: list[dict]):
-    """Log scraped stories to Supabase for analysis over time."""
+def log_scrape(stories):
     today = datetime.now().strftime("%Y-%m-%d")
     for s in stories[:10]:
-        data = {
+        supabase_insert("scrape_log", {
             "scrape_date": today,
             "source": s.get("source", ""),
             "title": s.get("title", ""),
@@ -942,40 +814,31 @@ def log_scrape(stories: list[dict]):
             "relevance_score": s.get("relevance_score", 0),
             "ai_triage_score": s.get("ai_score"),
             "ai_triage_reason": s.get("ai_reason", ""),
-            "extracted_data_points": s.get("ai_data_points", []),
             "used_in_post": False,
-        }
-        supabase_insert("scrape_log", data)
+        })
 
 
 # ── CACHE ──────────────────────────────────────────────────────────────────────
 
-def save_cache(all_content: list, pillar_selection: dict):
+def save_cache(all_content, pillar_selection):
     today = datetime.now().strftime("%Y-%m-%d")
-    cache = {
-        "date": today,
-        "pillar_selection": {
-            "pillar_id": pillar_selection.get("pillar_id", ""),
-            "reasoning": pillar_selection.get("reasoning", ""),
-            "suggested_angle": pillar_selection.get("suggested_angle", ""),
-        },
-        "content": all_content,
-    }
     try:
         with open(CACHE_FILE, "w") as f:
-            json.dump(cache, f)
-        print(f"  💾 Cached for today ({today})")
-    except Exception as e:
-        print(f"  ⚠️  Cache save failed: {e}")
+            json.dump({"date": today, "pillar_selection": {
+                "pillar_id": pillar_selection.get("pillar_id", ""),
+                "reasoning": pillar_selection.get("reasoning", ""),
+                "suggested_angle": pillar_selection.get("suggested_angle", ""),
+            }, "content": all_content}, f)
+    except Exception:
+        pass
 
 
-def load_cache() -> tuple:
+def load_cache():
     today = datetime.now().strftime("%Y-%m-%d")
     try:
         with open(CACHE_FILE) as f:
             cache = json.load(f)
         if cache.get("date") == today:
-            print(f"  ✅ Found today's cache — skipping scrape")
             return cache["content"], cache.get("pillar_selection")
     except Exception:
         pass
@@ -987,143 +850,100 @@ def load_cache() -> tuple:
 def main():
     now = datetime.now()
     regenerate_mode = os.environ.get("REGENERATE", "").lower() == "true"
-
     mode_label = "♻️  REGENERATE" if regenerate_mode else "🚀 FULL RUN"
     print(f"\n{mode_label} — {now.strftime('%A %Y-%m-%d %H:%M')}")
     print("=" * 60)
 
-    # Validate config
-    missing = [k for k, v in {
-        "ANTHROPIC_API_KEY": ANTHROPIC_API_KEY,
-        "TELEGRAM_BOT_TOKEN": TELEGRAM_BOT_TOKEN,
-        "TELEGRAM_CHAT_ID": TELEGRAM_CHAT_ID,
-    }.items() if not v]
+    missing = [k for k, v in {"ANTHROPIC_API_KEY": ANTHROPIC_API_KEY,
+        "TELEGRAM_BOT_TOKEN": TELEGRAM_BOT_TOKEN, "TELEGRAM_CHAT_ID": TELEGRAM_CHAT_ID}.items() if not v]
     if missing:
         print(f"❌ Missing: {', '.join(missing)}")
         return
 
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    all_content, pillar_selection = (None, None)
 
-    all_content = None
-    pillar_selection = None
-
-    # Try cache in regenerate mode
     if regenerate_mode:
-        print("\n🔄 Regenerate mode — loading cache...")
         all_content, pillar_selection = load_cache()
-        if all_content is None:
-            print("  ⚠️  No cache — running full scrape")
 
-    # ── PHASE 1: SCRAPE ───────────────────────────────────────────────
     if all_content is None:
-        print(f"\n📺 Fetching podcast episodes...")
-        podcast_episodes = fetch_youtube_episodes(YOUTUBE_CHANNEL_HANDLE, max_episodes=3)
-        print(f"  Found {len(podcast_episodes)} episode(s)")
+        # SCRAPE
+        print(f"\n📺 Fetching podcast...")
+        podcast = fetch_youtube_episodes(YOUTUBE_CHANNEL_HANDLE)
+        print(f"  {len(podcast)} episode(s)")
 
-        print(f"\n🔍 Fetching industry news...")
-        news_stories = fetch_rss_stories()
-        print(f"  Found {len(news_stories)} relevant stories")
+        print(f"\n🔍 Fetching news from {len(RSS_FEEDS)} sources...")
+        news = fetch_rss_stories()
+        print(f"  {len(news)} relevant stories")
+        sources_found = set(s["source"] for s in news)
+        print(f"  Sources: {', '.join(sources_found)}")
 
-        all_content = podcast_episodes + news_stories
+        all_content = podcast + news
 
-        # ── PHASE 2: AI EDITORIAL TRIAGE ──────────────────────────────
-        print(f"\n🧠 Running AI editorial triage on {len(news_stories)} stories...")
-        top_stories = editorial_triage(client, news_stories)
-        print(f"  Top story: {top_stories[0]['title'][:60]}..." if top_stories else "  No stories rated")
+        # TRIAGE
+        print(f"\n🧠 AI editorial triage...")
+        top_stories = editorial_triage(client, news)
         for s in top_stories[:3]:
-            print(f"  📰 [{s.get('ai_score','?')}/10] {s['title'][:55]}...")
+            print(f"  📰 [{s.get('ai_score','?')}/10] [{s['source']}] {s['title'][:55]}...")
 
-        # ── PHASE 3: DATA EXTRACTION ──────────────────────────────────
+        # EXTRACT
         article_intel = {}
         if top_stories:
-            print(f"\n🔬 Extracting intelligence from top article...")
-            full_text = fetch_article_text(top_stories[0].get("link", ""))
-            if full_text:
-                article_intel = extract_article_intelligence(
-                    client, full_text, top_stories[0]["title"]
-                )
-                if article_intel.get("data_points"):
-                    print(f"  Found data: {', '.join(article_intel['data_points'][:3])}")
-            else:
-                print("  ⚠️  Could not fetch full article text")
+            print(f"\n🔬 Extracting intelligence...")
+            text = fetch_article_text(top_stories[0].get("link", ""))
+            if text:
+                article_intel = extract_article_intelligence(client, text, top_stories[0]["title"])
 
-        # ── PHASE 4: ADAPTIVE PILLAR SELECTION ────────────────────────
-        print(f"\n📌 Selecting best pillar for today...")
-        recent_pillars = get_recent_pillars()
-        pillar_selection = select_pillar(client, top_stories, recent_pillars)
+        # PILLAR
+        print(f"\n📌 Selecting pillar...")
+        recent = get_recent_pillars()
+        pillar_selection = select_pillar(client, top_stories, recent)
         pillar_selection["article_intel"] = article_intel
         pillar_selection["top_stories"] = top_stories
+        print(f"  → {pillar_selection['pillar']['name']}")
+        print(f"  Reason: {pillar_selection.get('reasoning', '')[:80]}")
 
-        print(f"  Selected: {pillar_selection['pillar']['name']}")
-        print(f"  Reason: {pillar_selection.get('reasoning', 'n/a')[:80]}")
-
-        # Log scrape data
         log_scrape(all_content)
         save_cache(all_content, pillar_selection)
     else:
-        # Rebuild from cache
         if pillar_selection and not isinstance(pillar_selection.get("pillar"), dict):
-            # Reconstruct pillar object from cached pillar_id
             pid = pillar_selection.get("pillar_id", "")
-            pillar_obj = next((p for p in CONTENT_PILLARS if p["id"] == pid), CONTENT_PILLARS[0])
-            pillar_selection["pillar"] = pillar_obj
+            pillar_selection["pillar"] = next((p for p in CONTENT_PILLARS if p["id"] == pid), CONTENT_PILLARS[0])
         if not pillar_selection:
             pillar_selection = select_pillar(client, [], [])
 
     top_stories = pillar_selection.get("top_stories", [])
     article_intel = pillar_selection.get("article_intel", {})
 
-    # ── PHASE 5: FEEDBACK LOOP ────────────────────────────────────────
+    # FEEDBACK
     print(f"\n📈 Loading performance history...")
-    performance_context = get_top_performers()
-    if performance_context:
-        print("  Found past performance data — feeding into prompt")
-    else:
-        print("  No past data yet — will improve over time")
+    perf = get_top_performers()
+    print("  Found past data" if perf else "  No past data yet")
 
-    # ── PHASE 6: GENERATE + SCORE + REGENERATE LOOP ───────────────────
+    # GENERATE + SCORE
     post_format = select_format()
     print(f"\n✍️  Generating {post_format} post...")
-
-    best_result = None
-    best_scores = None
-    best_overall = 0
+    best_result, best_scores, best_overall = None, None, 0
 
     for attempt in range(1, MAX_REGENERATION_ATTEMPTS + 1):
-        result = generate_post(
-            client, top_stories, pillar_selection,
-            article_intel, performance_context, post_format,
-        )
-
-        print(f"\n📊 Scoring attempt {attempt}...")
+        result = generate_post(client, top_stories, pillar_selection, article_intel, perf, post_format)
         scores = score_post(client, result["post"], pillar_selection["pillar"]["name"])
         overall = scores.get("overall", 0)
-        print(f"  Score: {overall}/10 — Hook:{scores.get('hook_strength','?')} "
-              f"Data:{scores.get('data_density','?')} Dual:{scores.get('dual_audience','?')} "
-              f"Expert:{scores.get('expertise_landing','?')} Q:{scores.get('question_quality','?')}")
+        print(f"  Attempt {attempt}: {overall}/10 — Hook:{scores.get('hook_strength','?')} "
+              f"Data:{scores.get('data_integrity','?')} Product:{scores.get('product_depth','?')} "
+              f"Universal:{scores.get('universal_appeal','?')} Q:{scores.get('question_quality','?')}")
 
         if overall > best_overall:
-            best_result = result
-            best_scores = scores
-            best_overall = overall
-
+            best_result, best_scores, best_overall = result, scores, overall
         if overall >= MIN_SCORE_THRESHOLD:
-            print(f"  ✅ Passed quality gate ({overall} >= {MIN_SCORE_THRESHOLD})")
             break
         elif attempt < MAX_REGENERATION_ATTEMPTS:
-            print(f"  🔄 Below threshold ({overall} < {MIN_SCORE_THRESHOLD}) — regenerating...")
-            # Switch format on retry
             post_format = select_format()
-        else:
-            print(f"  ⚠️  Max attempts reached — using best ({best_overall}/10)")
 
-    # ── PHASE 7: DELIVER + LOG ────────────────────────────────────────
+    # DELIVER + LOG
     print(f"\n📨 Sending to Telegram...")
     send_to_telegram(best_result, best_scores, top_stories)
-
-    print(f"\n💾 Logging to Supabase...")
     log_post(best_result, best_scores, top_stories)
-
     print(f"\n✅ Done — {best_result['pillar_name']} / {best_result['format']} / score {best_overall}\n")
 
 
