@@ -544,7 +544,7 @@ VOICE:
 - Short paragraphs. Often single sentences.
 - Opens with an observation or question — NEVER a bold claim
 - Builds gradually. Names the insight clearly. Ends with a genuine question.
-- Emojis: max 1, often zero
+- Emojis: use 2-3 per post as STRUCTURAL signposts (👉 for key insight, 📊 before data, 💡 before lesson, 🎯 for core point). Never decorative. Never at the start of every line. They should help the reader SCAN the post on mobile.
 - Hashtags: exactly 3 on last line. Rotate from: #ProductManagement #iGaming #DataProducts #B2BSaaS #ProductLeadership #iGamingAffiliateMarketing #AffiliateMarketing
 
 DATA & NUMBERS RULE:
