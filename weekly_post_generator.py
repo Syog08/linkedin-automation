@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 """
-LinkedIn Intelligence Engine — v3.0
+LinkedIn Intelligence Engine — v3.1
 =====================================
 For Sergey Tadevosyan — CPO & Product Leader in iGaming
 
-Repositioned: Sergey is a product leader who uses data to build and
-improve B2B products in the iGaming industry. Affiliates are ONE context
-he operates in, not the only topic. Posts cover product management, data-
-driven decisions, B2B platform building, team leadership, and broader
-iGaming industry dynamics — always through the lens of someone who
-actually ships products and reads the data.
+v3.1 changes:
+- PM Experience Bank: 12 real career stories anchoring posts in genuine PM insight
+- Pillar weights rebalanced: product_leadership ↑, modern_pm_in_igaming ↑,
+  affiliate_economics ↓, igaming_product_ecosystem ↓
+- pm_first_mode: ~35% of runs lead with career story, news becomes supporting context
+- Added Product Talk + Intercom to RSS feeds
+- Stronger PM keywords in tier 1 scoring
 
 Environment variables:
   ANTHROPIC_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID,
@@ -41,13 +42,12 @@ MAX_REGENERATION_ATTEMPTS = 3
 YOUTUBE_CHANNEL_HANDLE = "TrackingtheTruthPodcast"
 
 # ── CONTENT PILLARS ────────────────────────────────────────────────────────────
-# Reframed: Sergey is a PRODUCT LEADER first. iGaming is the industry context.
 
 CONTENT_PILLARS = [
     {
         "id": "data_driven_product",
         "name": "Data-Driven Product Decisions in iGaming",
-        "weight": 30,
+        "weight": 25,
         "description": (
             "How Sergey uses data to make product decisions in the iGaming affiliate space. "
             "The gap between having dashboards and actually changing decisions. Metrics that "
@@ -64,7 +64,7 @@ CONTENT_PILLARS = [
     {
         "id": "product_leadership",
         "name": "Product Leadership in a Complex B2B Industry",
-        "weight": 25,
+        "weight": 30,
         "description": (
             "How Sergey leads product teams to deliver value in iGaming — one of the most "
             "complex regulated B2B industries. Prioritisation when every operator wants something "
@@ -81,7 +81,7 @@ CONTENT_PILLARS = [
     {
         "id": "igaming_product_ecosystem",
         "name": "iGaming Platforms & Product Ecosystem",
-        "weight": 20,
+        "weight": 15,
         "description": (
             "The product challenges of building for the iGaming affiliate ecosystem — "
             "operators, affiliate platforms, data intelligence, payments. What makes great "
@@ -98,7 +98,7 @@ CONTENT_PILLARS = [
     {
         "id": "affiliate_economics",
         "name": "Affiliate Programme Economics & Strategy",
-        "weight": 15,
+        "weight": 10,
         "description": (
             "The economics and strategy behind affiliate programmes — commission models, "
             "player value, programme performance metrics. Seen through the lens of someone "
@@ -115,7 +115,7 @@ CONTENT_PILLARS = [
     {
         "id": "modern_pm_in_igaming",
         "name": "Modern Product Thinking Meets iGaming",
-        "weight": 10,
+        "weight": 20,
         "description": (
             "Where modern product management thinking (AI tools, outcome-driven development, "
             "continuous discovery, experimentation) meets the reality of building for iGaming. "
@@ -130,36 +130,254 @@ CONTENT_PILLARS = [
     },
 ]
 
-# ── NEWS SOURCES ───────────────────────────────────────────────────────────────
-# Two streams: iGaming industry news + modern product management thinking.
-# The iGaming sources provide the EXAMPLES and DATA.
-# The PM sources provide the FRAMEWORKS and MODERN THINKING.
+# ── PM EXPERIENCE BANK ─────────────────────────────────────────────────────────
+# Real career stories and product management lessons from Sergey's experience.
+# These anchor posts in genuine personal insight rather than invented examples.
+# Claude uses these as primary springboards, especially when pm_first_mode=True.
 
-RSS_FEEDS = [
-    # iGaming & affiliate sources (the example set)
-    ("iGB",              "https://igamingbusiness.com/feed/"),
-    ("AffiliateINSIDER", "https://affiliateinsider.com/feed/"),
-    ("EGR Global",       "https://egrglobal.com/feed/"),
-    ("CalvinAyre",       "https://calvinayre.com/feed/"),
-    ("SiGMA",            "https://sigma.world/news/feed/"),
-    ("Gambling Insider", "https://gamblinginsider.com/feed/"),
-    ("GPWA",             "https://www.gpwa.org/feed/"),
-    ("Affiliate Guard Dog", "https://www.affiliateguarddog.com/feed/"),
-    ("AffRoom",          "https://www.affroom.com/feed/"),
-    ("AffiliateFix",     "https://affiliatefix.com/forums/igaming.54/index.rss"),
-    # Product management & AI in PM sources (the thinking frameworks)
-    ("Lenny's Newsletter",  "https://www.lennysnewsletter.com/feed"),
-    ("SVPG",                "https://www.svpg.com/feed/"),
-    ("Mind the Product",    "https://www.mindtheproduct.com/feed/"),
-    ("ProductBoard Blog",   "https://www.productboard.com/blog/feed/"),
-    ("Shreyas Doshi",       "https://www.shreyasdoshi.com/feed"),
-    ("The Pragmatic Engineer", "https://newsletter.pragmaticengineer.com/feed"),
-    ("One Knight in Product", "https://www.oneknightinproduct.com/feed"),
+PM_EXPERIENCE_BANK = [
+    {
+        "id": "dashboard_unused_metrics",
+        "hook": "We built a reporting module with 30 metrics. Operators used 3.",
+        "story": (
+            "When I launched a new analytics section for affiliate programme operators, "
+            "I added every metric I could think of — FTD count, FTD rate, NDC, revenue by geo, "
+            "by device, by affiliate tier, margins, click-to-FTD conversion... everything. "
+            "Then I tracked which ones they actually opened. Three. Revenue, FTD count, and a "
+            "custom trend metric I almost didn't build. The rest was noise."
+        ),
+        "insight": (
+            "Data products fail when you optimise for completeness instead of decision support. "
+            "The question is never 'what data can we show?' — it's 'what decision are we helping make?'"
+        ),
+        "pillar": "data_driven_product",
+        "format_hint": "data_insight",
+    },
+    {
+        "id": "ftd_second_deposit",
+        "hook": "Most affiliate programmes track first deposits. The number that actually predicts programme health is the second-deposit rate.",
+        "story": (
+            "I started correlating FTD counts against second-deposit rates across affiliate cohorts. "
+            "The affiliates sending the most first-time depositors often had the worst second-deposit rates. "
+            "Meanwhile the programme was paying CPA on every FTD — "
+            "essentially paying for players who churned in their first session."
+        ),
+        "insight": (
+            "The metric you pay on becomes the metric affiliates optimise for. "
+            "If you pay on FTDs, you attract affiliates who are good at driving first deposits — "
+            "regardless of what happens after. That's a product design problem, not a commercial one."
+        ),
+        "pillar": "data_driven_product",
+        "format_hint": "data_insight",
+    },
+    {
+        "id": "ltv_vs_competitor_cpa",
+        "hook": "Most CPA deals I've seen are priced using competitor rates, not player LTV data.",
+        "story": (
+            "When I worked on the data product side of an affiliate publisher, I checked how often "
+            "operator CPA rates correlated with actual player lifetime value from that source. "
+            "Almost never. Rates were set by looking at what the market offered — "
+            "not what a depositing player was actually worth. "
+            "The operators with the highest CPAs weren't the most generous. They had better LTV models."
+        ),
+        "insight": (
+            "If you don't have a reliable player LTV model, you're guessing at your commission rates. "
+            "That's not a commercial problem — it's a data product gap."
+        ),
+        "pillar": "affiliate_economics",
+        "format_hint": "contrarian",
+    },
+    {
+        "id": "commission_as_product_design",
+        "hook": "Commission models are not commercial decisions. They're product design decisions.",
+        "story": (
+            "I spent months watching commercial teams debate RevShare vs CPA as if it was a pricing problem. "
+            "It's not. Every model creates a different incentive: CPA rewards volume, RevShare rewards quality, "
+            "Hybrid tries to balance both. The debate should start with: what affiliate behaviour "
+            "do you want to encourage? The commercial team was asking 'how much?' "
+            "The product question is 'optimise for what?'"
+        ),
+        "insight": (
+            "The commission structure IS the product mechanism. When you design it, you're designing "
+            "what affiliates optimise for — and therefore what players arrive."
+        ),
+        "pillar": "affiliate_economics",
+        "format_hint": "contrarian",
+    },
+    {
+        "id": "b2b_prioritisation_outcomes",
+        "hook": "When 50 operators each want a different feature, the list doesn't need prioritisation. It needs collapsing.",
+        "story": (
+            "Early in B2B iGaming product work I treated every operator request as a distinct feature. "
+            "The backlog grew to hundreds of items. "
+            "Then I stopped asking 'what do operators want?' and started asking 'what outcome are they trying to achieve?' "
+            "The list collapsed by about 70%. "
+            "Most requests were different expressions of the same 6 underlying needs."
+        ),
+        "insight": (
+            "In multi-tenant B2B products, surface-level requests compress into a handful of underlying outcomes. "
+            "Discover the outcomes and prioritisation becomes dramatically simpler. "
+            "Staying at the feature level keeps the backlog infinite."
+        ),
+        "pillar": "product_leadership",
+        "format_hint": "product_lesson",
+    },
+    {
+        "id": "no_to_feature",
+        "hook": "The hardest 'no' I gave a client changed how I think about product leadership.",
+        "story": (
+            "A large operator requested a specific commission calculation feature tied to their "
+            "unusual internal accounting setup. Dev cost was significant; it served one client. "
+            "The request came with revenue pressure. I said no — and offered instead to solve "
+            "the underlying reconciliation problem differently. The alternative took one week. "
+            "Twelve other operators later asked for the same solution."
+        ),
+        "insight": (
+            "Saying no to a feature is easy. Saying no while genuinely solving the underlying problem "
+            "is product leadership. That's the difference between order-taking and building."
+        ),
+        "pillar": "product_leadership",
+        "format_hint": "product_lesson",
+    },
+    {
+        "id": "b2b_onboarding_product_problem",
+        "hook": "Operator onboarding is the most underrated growth lever in iGaming B2B platforms.",
+        "story": (
+            "When I audited operator activation on our platform, operators who completed a specific "
+            "setup sequence within 7 days had roughly 3x the 90-day retention of those who didn't. "
+            "But most operators never completed that sequence. "
+            "The product made it easy to sign up and made setup optional. "
+            "Those were two separate decisions — one deliberate, one by accident."
+        ),
+        "insight": (
+            "In B2B iGaming platforms, onboarding isn't a customer success problem. "
+            "It's a product design problem. The path to value needs to be the default path — not the optional one."
+        ),
+        "pillar": "product_leadership",
+        "format_hint": "observation",
+    },
+    {
+        "id": "90_10_affiliate_product",
+        "hook": "About 10% of affiliates drive roughly 90% of programme value. Most platforms are built for the 90%.",
+        "story": (
+            "When I segmented affiliate programme data by actual revenue contribution, "
+            "the distribution was more extreme than any Pareto I'd seen. "
+            "The top decile drove nearly everything. But the feature roadmap was dominated "
+            "by requests from the long tail — they were louder and more numerous. "
+            "What our top affiliates actually needed was completely different: "
+            "better data exports, faster reporting, flexible deal structures."
+        ),
+        "insight": (
+            "In affiliate platforms you're building two products: a mass-market tool for the long tail, "
+            "and a high-performance tool for the top tier. "
+            "Most teams build one and wonder why their most valuable affiliates quietly migrate."
+        ),
+        "pillar": "igaming_product_ecosystem",
+        "format_hint": "data_insight",
+    },
+    {
+        "id": "outcome_roadmap_regulated",
+        "hook": "Outcome-driven roadmaps sound great until your biggest client needs a compliance feature by Tuesday.",
+        "story": (
+            "I've run product teams using outcome-based roadmapping in iGaming B2B. "
+            "The framework is powerful — until regulatory deadlines land. "
+            "In a multi-market regulated industry, compliance requirements aren't user needs "
+            "you can deprioritise. They're hard constraints with dates. "
+            "The first time a major compliance deadline hit mid-sprint, the whole framework nearly collapsed. "
+            "We had to adapt it significantly."
+        ),
+        "insight": (
+            "Modern PM frameworks need adapting for regulated industries. The skill is knowing "
+            "which parts apply, which need modifying, and which to set aside entirely. "
+            "Applying them wholesale often creates more friction than value."
+        ),
+        "pillar": "modern_pm_in_igaming",
+        "format_hint": "contrarian",
+    },
+    {
+        "id": "ai_fraud_vs_content",
+        "hook": "Everyone's talking about AI for content generation. The real iGaming affiliate use case is fraud detection.",
+        "story": (
+            "Affiliate fraud patterns are surprisingly consistent: traffic spikes without conversion lag, "
+            "geo mismatches between clicks and signups, device fingerprint clustering. "
+            "These are nearly invisible in standard dashboards but trivial for a well-trained classification model. "
+            "I've seen fraud rates drop significantly when detection moved from rules-based to model-based. "
+            "Meanwhile most 'AI in iGaming' discussions are still about chatbots."
+        ),
+        "insight": (
+            "In regulated industries, AI earns trust fastest when it solves problems manual processes "
+            "genuinely can't keep up with. Fraud detection is that problem. Content generation is not."
+        ),
+        "pillar": "modern_pm_in_igaming",
+        "format_hint": "contrarian",
+    },
+    {
+        "id": "multi_market_architecture",
+        "hook": "Building for 50 regulatory markets isn't a compliance problem. It's a product architecture problem.",
+        "story": (
+            "Early in platform product work, regulatory requirements were treated as compliance layers "
+            "bolted on after the fact. The result was a fragile codebase with market-specific hacks everywhere — "
+            "brittle, expensive, slow to update. "
+            "When I reframed it as a product design challenge — how do we build a configurable system "
+            "that adapts to market rules by design? — the architecture became cleaner "
+            "and the compliance team stopped being a bottleneck."
+        ),
+        "insight": (
+            "Regulatory flexibility is a product capability, not a compliance tax. "
+            "Teams that treat it as a product feature build more durable platforms. "
+            "Teams that treat it as an afterthought rebuild every time a market changes."
+        ),
+        "pillar": "igaming_product_ecosystem",
+        "format_hint": "contrarian",
+    },
+    {
+        "id": "banking_to_igaming_lesson",
+        "hook": "The product lesson I carried from digital banking into iGaming: people don't use features, they use answers.",
+        "story": (
+            "In digital banking, users never asked for 'a transaction history view.' "
+            "They asked to understand whether they could afford something. "
+            "The feature is a means to an answer. "
+            "When I moved into iGaming affiliate products, I found the same pattern — "
+            "operators don't want dashboards, they want confidence in one question: is my programme healthy?"
+        ),
+        "insight": (
+            "The right product question isn't 'what feature should I build?' "
+            "It's 'what question is the user trying to answer?' "
+            "That question travels across industries. The iGaming context is different. The human problem is not."
+        ),
+        "pillar": "modern_pm_in_igaming",
+        "format_hint": "observation",
+    },
 ]
 
-# Keyword tiers — iGaming examples + PM lens
+# ── NEWS SOURCES ───────────────────────────────────────────────────────────────
+
+RSS_FEEDS = [
+    # iGaming & affiliate sources
+    ("iGB",              "<https://igamingbusiness.com/feed/>"),
+    ("AffiliateINSIDER", "<https://affiliateinsider.com/feed/>"),
+    ("EGR Global",       "<https://egrglobal.com/feed/>"),
+    ("CalvinAyre",       "<https://calvinayre.com/feed/>"),
+    ("SiGMA",            "<https://sigma.world/news/feed/>"),
+    ("Gambling Insider", "<https://gamblinginsider.com/feed/>"),
+    ("GPWA",             "<https://www.gpwa.org/feed/>"),
+    ("Affiliate Guard Dog", "<https://www.affiliateguarddog.com/feed/>"),
+    ("AffRoom",          "<https://www.affroom.com/feed/>"),
+    ("AffiliateFix",     "<https://affiliatefix.com/forums/igaming.54/index.rss>"),
+    # Product management sources
+    ("Lenny's Newsletter",     "<https://www.lennysnewsletter.com/feed>"),
+    ("SVPG",                   "<https://www.svpg.com/feed/>"),
+    ("Mind the Product",       "<https://www.mindtheproduct.com/feed/>"),
+    ("ProductBoard Blog",      "<https://www.productboard.com/blog/feed/>"),
+    ("Shreyas Doshi",          "<https://www.shreyasdoshi.com/feed>"),
+    ("The Pragmatic Engineer", "<https://newsletter.pragmaticengineer.com/feed>"),
+    ("One Knight in Product",  "<https://www.oneknightinproduct.com/feed>"),
+    ("Product Talk",           "<https://www.producttalk.org/feed/>"),
+    ("Intercom Blog",          "<https://www.intercom.com/blog/feed>"),
+]
+
+# Keyword tiers
 KEYWORD_TIERS = {
-    # Tier 1 (3 pts): where iGaming meets product/data thinking
     3: [
         "commission", "revshare", "revenue share", "cpa", "hybrid",
         "ltv", "lifetime value", "ftd", "player value",
@@ -168,8 +386,11 @@ KEYWORD_TIERS = {
         "product management", "product strategy", "product leader", "cpo",
         "prioritisation", "roadmap", "migration", "feature adoption",
         "ai in product", "ai product management", "llm", "generative ai",
+        "product discovery", "continuous discovery", "jobs to be done", "jtbd",
+        "outcome-driven", "north star metric", "activation rate", "churn rate",
+        "product-market fit", "b2b product", "platform product", "product ops",
+        "user research", "hypothesis testing", "experiment",
     ],
-    # Tier 2 (2 pts): broader iGaming and PM craft
     2: [
         "affiliate", "operator", "igaming", "online casino", "sportsbook",
         "b2b", "saas", "platform", "product development",
@@ -178,10 +399,9 @@ KEYWORD_TIERS = {
         "acquisition", "merger", "partnership", "funding",
         "catena media", "better collective", "raketech",
         "partnermatrix", "myaffiliates", "netrefer", "affilka", "cellxpert",
-        "product-led", "outcome", "experiment", "hypothesis", "validation",
+        "product-led", "outcome", "validation",
         "ai agent", "copilot", "automation", "workflow",
     ],
-    # Tier 3 (1 pt): supporting context
     1: [
         "gambling", "betting", "casino", "pam", "payment",
         "telegram", "streamer", "influencer",
@@ -240,7 +460,7 @@ def supabase_query(table: str, select: str = "*", params: str = "") -> list:
 # ── YOUTUBE SCRAPING ───────────────────────────────────────────────────────────
 
 def get_youtube_channel_id(handle: str) -> str | None:
-    url = f"https://www.youtube.com/@{handle}"
+    url = f"<https://www.youtube.com/@{handle}>"
     try:
         headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
         resp = requests.get(url, headers=headers, timeout=10)
@@ -257,7 +477,7 @@ def fetch_youtube_episodes(handle: str, max_episodes: int = 3) -> list[dict]:
     channel_id = get_youtube_channel_id(handle)
     if not channel_id:
         return []
-    rss_url = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
+    rss_url = f"<https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}>"
     episodes = []
     try:
         feed = feedparser.parse(rss_url)
@@ -290,6 +510,14 @@ def score_relevance(text: str) -> int:
             if kw in text_lower:
                 score += points
     return score
+
+
+def get_pm_experience_springboard(pillar_id: str = "") -> dict | None:
+    """Return a PM experience entry for the given pillar, or any entry if no match."""
+    candidates = [e for e in PM_EXPERIENCE_BANK if e.get("pillar") == pillar_id] if pillar_id else []
+    if not candidates:
+        candidates = PM_EXPERIENCE_BANK
+    return random.choice(candidates) if candidates else None
 
 
 def fetch_rss_stories(max_per_feed: int = 6) -> list[dict]:
@@ -449,10 +677,12 @@ TOP STORIES:
 RECENT PILLARS (avoid repeating): {recent_text}
 
 RULES:
-1. Respect the weights — data_driven_product (30%) and product_leadership (25%) should dominate
-2. The post should feel like a CPO wrote it, not an affiliate manager
-3. Even affiliate-related news should be framed through a product/data lens
-4. Pick the pillar where Sergey can share the deepest, most original insight
+1. Respect the weights — product_leadership (30%) and data_driven_product (25%) should dominate
+2. modern_pm_in_igaming (20%) should appear regularly — don't neglect it
+3. affiliate_economics (10%) should be rare — only when truly compelling
+4. The post should feel like a CPO wrote it, not an affiliate manager
+5. Even affiliate-related news should be framed through a product/data lens
+6. Pick the pillar where Sergey can share the deepest, most original insight
 
 JSON only:
 {{
@@ -478,7 +708,6 @@ JSON only:
     except Exception as e:
         print(f"  ⚠️  Pillar selection failed: {e}")
 
-    # Fallback
     week = datetime.now().isocalendar()[1]
     dow = datetime.now().weekday()
     day_offset = {1: 0, 3: 1, 5: 2}.get(dow, 0)
@@ -531,8 +760,8 @@ THE GOLDEN RULE — READ THIS CAREFULLY:
 - NEVER use examples from fintech, e-commerce, or generic SaaS. ALWAYS iGaming affiliate examples.
 
 WHAT SERGEY WRITES ABOUT:
-1. Product management craft — applied to iGaming affiliate: prioritisation, saying no, building for behaviour change, shipping outcomes. Examples: "When 50 operators each want a different commission model, here's how I prioritise..."
-2. Data-driven decisions — in the affiliate context: what metrics predict programme success, why most affiliate reporting fails, how data changes product roadmaps. Examples: "We had a dashboard showing 30 metrics. Operators used 3..."
+1. Product management craft — applied to iGaming affiliate: prioritisation, saying no, building for behaviour change, shipping outcomes.
+2. Data-driven decisions — in the affiliate context: what metrics predict programme success, why most affiliate reporting fails, how data changes product roadmaps.
 3. AI & modern PM — applied to iGaming: how AI changes affiliate fraud detection, how LLMs could transform operator reporting, what AI means for product teams in regulated industries.
 4. iGaming affiliate economics — through product eyes: commission models as product design problems, player value as a data product challenge, programme performance as a system design question.
 5. Team leadership — with iGaming context: building product culture in B2B iGaming, hiring PMs for regulated industries, cross-functional work with compliance teams.
@@ -544,7 +773,7 @@ VOICE:
 - Short paragraphs. Often single sentences.
 - Opens with an observation or question — NEVER a bold claim
 - Builds gradually. Names the insight clearly. Ends with a genuine question.
-- Emojis: use 2-3 per post as STRUCTURAL signposts (👉 for key insight, 📊 before data, 💡 before lesson, 🎯 for core point). Never decorative. Never at the start of every line. They should help the reader SCAN the post on mobile.
+- Emojis: use 2-3 per post as STRUCTURAL signposts (👉 for key insight, 📊 before data, 💡 before lesson, 🎯 for core point). Never decorative. Never at the start of every line.
 - Hashtags: exactly 3 on last line. Rotate from: #ProductManagement #iGaming #DataProducts #B2BSaaS #ProductLeadership #iGamingAffiliateMarketing #AffiliateMarketing
 
 DATA & NUMBERS RULE:
@@ -554,30 +783,11 @@ DATA & NUMBERS RULE:
 - NEVER invent precise statistics. "About 60-70%" is honest. "63.4%" without a source is not.
 
 WHAT TO AVOID:
-- Generic SaaS, fintech, or e-commerce examples — ALWAYS iGaming affiliate
+- Generic SaaS, fintech, or e-commerce examples
 - Pure affiliate-manager-speak with no product thinking visible
-- Posts about tracking technology implementation details (postbacks, cookies, S2S)
+- Posts about tracking technology implementation details
 - Summarising news without a product/data/leadership insight
 - Generic LinkedIn platitudes
-- Posts where the ENTIRE substance is about a news event
-
-EXAMPLE POST — notice: iGaming affiliate example, product thinking lens:
-"Many people work in iGaming affiliates.
-
-But surprisingly few understand how the economics actually work.
-
-Operators are not buying traffic.
-They are buying future player revenue.
-
-That's why an affiliate sending 100 high-quality players can be worth more than one sending 1,000 low-quality users.
-
-Affiliate platforms shouldn't just track traffic.
-
-They should answer one question: which affiliates actually bring valuable players?
-
-What metric do you trust most when evaluating affiliate quality?
-
-#iGaming #iGamingAffiliateMarketing #ProductManagement"
 
 THE TEST: Would a product leader at any B2B company find the THINKING interesting? Would an iGaming insider find the EXAMPLES credible? Both must be true."""
 
@@ -586,11 +796,11 @@ THE TEST: Would a product leader at any B2B company find the THINKING interestin
 
 def select_format() -> str:
     weights = {
-        "observation": 25,       # notice a pattern → why it matters
-        "data_insight": 30,      # a number → what it means → what people miss
-        "product_lesson": 20,    # something I learned building products
-        "contrarian": 15,        # common belief → why the data disagrees
-        "industry_lens": 10,     # news event → product/data implication
+        "observation": 25,
+        "data_insight": 30,
+        "product_lesson": 20,
+        "contrarian": 15,
+        "industry_lens": 10,
     }
     population = []
     for fmt, weight in weights.items():
@@ -600,14 +810,33 @@ def select_format() -> str:
 
 # ── POST GENERATION ────────────────────────────────────────────────────────────
 
-def generate_post(client, top_stories, pillar_selection, article_intel, performance_context, post_format):
+def generate_post(
+    client,
+    top_stories,
+    pillar_selection,
+    article_intel,
+    performance_context,
+    post_format,
+    pm_experience: dict = None,
+    pm_first_mode: bool = False,
+):
     pillar = pillar_selection["pillar"]
     suggested_angle = pillar_selection.get("suggested_angle", "")
 
-    # Build context block
     context_block = ""
+
+    # PM experience — always include when available; position depends on mode
+    if pm_experience and pm_first_mode:
+        context_block += (
+            "YOUR CAREER STORY — PRIMARY SPRINGBOARD\n"
+            "(Lead with this. Expand it in Sergey's voice. Use news only as a brief supporting reference.)\n\n"
+        )
+        context_block += f"Hook: {pm_experience['hook']}\n"
+        context_block += f"Story: {pm_experience['story']}\n"
+        context_block += f"Insight: {pm_experience['insight']}\n\n"
+
     if top_stories:
-        context_block += "INDUSTRY NEWS THIS WEEK (use as springboard, not as topic):\n\n"
+        context_block += "INDUSTRY NEWS THIS WEEK (use as springboard or supporting context):\n\n"
         for i, s in enumerate(top_stories[:3], 1):
             context_block += f"{i}. [{s['source']}] {s['title']}\n"
             if s.get("ai_product_angle"):
@@ -621,15 +850,33 @@ def generate_post(client, top_stories, pillar_selection, article_intel, performa
     if article_intel:
         context_block += "EXTRACTED INTELLIGENCE FROM TOP ARTICLE:\n"
         if article_intel.get("data_points"):
-            context_block += f"  Real data points (use these — they're from the source): {', '.join(article_intel['data_points'])}\n"
+            context_block += f"  Real data points: {', '.join(article_intel['data_points'])}\n"
         if article_intel.get("product_implications"):
             context_block += f"  Product implications: {', '.join(article_intel['product_implications'][:2])}\n"
         if article_intel.get("springboard"):
             context_block += f"  CPO insight: {article_intel['springboard']}\n"
         context_block += "\n"
 
+    if pm_experience and not pm_first_mode:
+        context_block += (
+            "YOUR CAREER STORY — AVAILABLE SPRINGBOARD\n"
+            "(Use this if it's stronger than the news angle, or blend it in.)\n\n"
+        )
+        context_block += f"Hook: {pm_experience['hook']}\n"
+        context_block += f"Story: {pm_experience['story']}\n"
+        context_block += f"Insight: {pm_experience['insight']}\n\n"
+
     if performance_context:
         context_block += f"\n{performance_context}\n"
+
+    pm_first_instruction = ""
+    if pm_first_mode:
+        pm_first_instruction = (
+            "\n\nPM-FIRST MODE — CRITICAL: This post MUST be built around the career story above. "
+            "Start from Sergey's real experience. Expand it, sharpen the insight, give it the iGaming affiliate context. "
+            "Any news reference should be one line max and subordinate to the personal story. "
+            "The post should feel like a product leader sharing a hard-won lesson — not a reaction to industry news."
+        )
 
     user_prompt = f"""Write one LinkedIn post for Sergey.
 
@@ -642,29 +889,24 @@ FORMAT: {post_format}
 - contrarian: common iGaming belief → why the data/product thinking disagrees → question
 - industry_lens: iGaming news (brief) → product/data implication → question
 
-SUGGESTED ANGLE: {suggested_angle if suggested_angle else "Choose the strongest angle from the pillar examples."}
+SUGGESTED ANGLE: {suggested_angle if suggested_angle else "Choose the strongest angle from the pillar examples or the career story."}
 
 PILLAR EXAMPLE ANGLES:
 {chr(10).join(f'- {a}' for a in pillar.get('example_angles', []))}
 
 {context_block if context_block else "No news found — write from product leadership experience in iGaming affiliate."}
 
-THE IDENTITY RULE — CRITICAL:
+THE IDENTITY RULE:
 - Sergey is an iGaming affiliate authority who THINKS like a product leader.
-- ALL examples must come from iGaming affiliate: operators, affiliates, commission models, player data, affiliate platforms, programme management.
-- NEVER use generic SaaS, fintech, or e-commerce examples.
-- But the INSIGHT should be a product management or data lesson that any PM would find valuable.
-- Pattern: "Here's something happening in iGaming affiliate [specific example] → here's the product/data lesson [universal insight] → question"
-
-THE SPRINGBOARD TECHNIQUE:
-1. If using news: mention it in 1-2 lines max (20%). Then PIVOT to a product/data insight illustrated with iGaming affiliate examples (80%).
-2. If no relevant news: open with a direct observation from building products for the iGaming affiliate space.
-3. End with a question about the PRODUCT/DATA insight, framed with iGaming context.
+- ALL examples must come from iGaming affiliate: operators, affiliates, commission models, player data, affiliate platforms.
+- The INSIGHT should be a product management or data lesson that any PM would find valuable.
+- Pattern: "Here's something from iGaming affiliate [specific example] → here's the product/data lesson [universal insight] → question"
 
 DATA SOURCING:
 - From article → "Recent industry data shows...", "A report this week noted..."
 - From experience → "In my experience...", "Across programmes I've worked with..."
-- NEVER state precise numbers without framing. No orphan statistics.
+- NEVER state precise numbers without framing.
+{pm_first_instruction}
 
 Output ONLY the post text. No preamble."""
 
@@ -680,6 +922,8 @@ Output ONLY the post text. No preamble."""
         "pillar_name": pillar["name"],
         "format": post_format,
         "suggested_angle": suggested_angle,
+        "pm_first_mode": pm_first_mode,
+        "pm_experience_id": pm_experience.get("id", "") if pm_experience else "",
         "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
     }
 
@@ -698,7 +942,7 @@ PILLAR: {pillar_name}
 
 Rate 1-10:
 1. HOOK: Would a product leader stop scrolling?
-2. DATA INTEGRITY: Does it include a real number AND frame where it comes from (source or experience)? Orphan stats with no framing = low score.
+2. DATA INTEGRITY: Does it include a real number AND frame where it comes from? Orphan stats = low score.
 3. PRODUCT DEPTH: Does it land on a genuine product management, data, or platform insight — not just industry commentary?
 4. UNIVERSAL APPEAL: Would a PM at Stripe or Shopify find this interesting, while an iGaming insider finds it credible?
 5. QUESTION: Does the closing question invite debate about product/data decisions?
@@ -741,12 +985,13 @@ def send_to_telegram(result, scores, top_stories):
     day_name = datetime.now().strftime("%A")
     overall = scores.get("overall", "?")
     score_emoji = "🟢" if overall >= 7.5 else "🟡" if overall >= 6.5 else "🔴"
+    mode_label = "🎯 PM-first" if result.get("pm_first_mode") else "📰 News-led"
 
     header = (
         f"✍️ *LinkedIn Post Ready — {day_name}*\n"
         f"_{result['generated_at']}_\n"
         f"Pillar: _{result['pillar_name']}_\n"
-        f"Format: _{result['format']}_\n"
+        f"Format: _{result['format']}_ | Mode: _{mode_label}_\n"
         f"{score_emoji} Quality: *{overall}/10*\n"
         f"📊 Hook:{scores.get('hook_strength','?')} "
         f"Data:{scores.get('data_integrity','?')} "
@@ -759,10 +1004,15 @@ def send_to_telegram(result, scores, top_stories):
     if top_stories:
         header += f"Inspired by: [{top_stories[0]['source']}]({top_stories[0].get('link','')})\n"
 
-    full_message = header + "\n─────────────────────\n\n" + post + "\n\n─────────────────────\n✅ Copy and post on LinkedIn\n⏰ Best time: 8–10am CET"
+    full_message = (
+        header
+        + "\n─────────────────────\n\n"
+        + post
+        + "\n\n─────────────────────\n✅ Copy and post on LinkedIn\n⏰ Best time: 8–10am CET"
+    )
 
     resp = requests.post(
-        f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+        f"<https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage>",
         json={"chat_id": TELEGRAM_CHAT_ID, "text": full_message,
               "parse_mode": "Markdown", "disable_web_page_preview": True},
         timeout=10,
@@ -787,6 +1037,8 @@ def log_post(result, scores, top_stories):
         "hook_line": post_text.split("\n")[0][:200] if post_text else "",
         "post_text": post_text,
         "has_data_point": has_data,
+        "pm_first_mode": result.get("pm_first_mode", False),
+        "pm_experience_id": result.get("pm_experience_id", ""),
         "source_articles": json.dumps([
             {"source": s["source"], "title": s["title"], "link": s.get("link", "")}
             for s in top_stories[:3]
@@ -867,7 +1119,6 @@ def main():
         all_content, pillar_selection = load_cache()
 
     if all_content is None:
-        # SCRAPE
         print(f"\n📺 Fetching podcast...")
         podcast = fetch_youtube_episodes(YOUTUBE_CHANNEL_HANDLE)
         print(f"  {len(podcast)} episode(s)")
@@ -880,13 +1131,11 @@ def main():
 
         all_content = podcast + news
 
-        # TRIAGE
         print(f"\n🧠 AI editorial triage...")
         top_stories = editorial_triage(client, news)
         for s in top_stories[:3]:
             print(f"  📰 [{s.get('ai_score','?')}/10] [{s['source']}] {s['title'][:55]}...")
 
-        # EXTRACT
         article_intel = {}
         if top_stories:
             print(f"\n🔬 Extracting intelligence...")
@@ -894,7 +1143,6 @@ def main():
             if text:
                 article_intel = extract_article_intelligence(client, text, top_stories[0]["title"])
 
-        # PILLAR
         print(f"\n📌 Selecting pillar...")
         recent = get_recent_pillars()
         pillar_selection = select_pillar(client, top_stories, recent)
@@ -914,19 +1162,37 @@ def main():
 
     top_stories = pillar_selection.get("top_stories", [])
     article_intel = pillar_selection.get("article_intel", {})
+    pillar_id = pillar_selection.get("pillar_id", "")
 
-    # FEEDBACK
+    # PM experience springboard — always fetch one matching the selected pillar
+    print(f"\n💡 Loading PM experience springboard...")
+    pm_experience = get_pm_experience_springboard(pillar_id)
+    if pm_experience:
+        print(f"  → {pm_experience['id']}")
+
+    # pm_first_mode: lead with career story rather than news
+    # Triggered when: random 35% chance, OR pillar is PM-heavy and top news score is weak
+    top_story_score = top_stories[0].get("ai_score", 0) if top_stories else 0
+    pm_heavy_pillars = {"product_leadership", "modern_pm_in_igaming"}
+    pm_first_mode = (
+        random.random() < 0.35
+        or (pillar_id in pm_heavy_pillars and top_story_score < 7)
+    )
+    print(f"  Mode: {'🎯 PM-first (leading with career story)' if pm_first_mode else '📰 News-led'}")
+
     print(f"\n📈 Loading performance history...")
     perf = get_top_performers()
     print("  Found past data" if perf else "  No past data yet")
 
-    # GENERATE + SCORE
     post_format = select_format()
     print(f"\n✍️  Generating {post_format} post...")
     best_result, best_scores, best_overall = None, None, 0
 
     for attempt in range(1, MAX_REGENERATION_ATTEMPTS + 1):
-        result = generate_post(client, top_stories, pillar_selection, article_intel, perf, post_format)
+        result = generate_post(
+            client, top_stories, pillar_selection, article_intel,
+            perf, post_format, pm_experience, pm_first_mode,
+        )
         scores = score_post(client, result["post"], pillar_selection["pillar"]["name"])
         overall = scores.get("overall", 0)
         print(f"  Attempt {attempt}: {overall}/10 — Hook:{scores.get('hook_strength','?')} "
@@ -940,7 +1206,6 @@ def main():
         elif attempt < MAX_REGENERATION_ATTEMPTS:
             post_format = select_format()
 
-    # DELIVER + LOG
     print(f"\n📨 Sending to Telegram...")
     send_to_telegram(best_result, best_scores, top_stories)
     log_post(best_result, best_scores, top_stories)
