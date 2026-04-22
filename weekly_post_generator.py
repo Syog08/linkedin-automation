@@ -354,26 +354,26 @@ PM_EXPERIENCE_BANK = [
 
 RSS_FEEDS = [
     # iGaming & affiliate sources
-    ("iGB",              "<https://igamingbusiness.com/feed/>"),
-    ("AffiliateINSIDER", "<https://affiliateinsider.com/feed/>"),
-    ("EGR Global",       "<https://egrglobal.com/feed/>"),
-    ("CalvinAyre",       "<https://calvinayre.com/feed/>"),
-    ("SiGMA",            "<https://sigma.world/news/feed/>"),
-    ("Gambling Insider", "<https://gamblinginsider.com/feed/>"),
-    ("GPWA",             "<https://www.gpwa.org/feed/>"),
-    ("Affiliate Guard Dog", "<https://www.affiliateguarddog.com/feed/>"),
-    ("AffRoom",          "<https://www.affroom.com/feed/>"),
-    ("AffiliateFix",     "<https://affiliatefix.com/forums/igaming.54/index.rss>"),
+    ("iGB",              "https://igamingbusiness.com/feed/"),
+    ("AffiliateINSIDER", "https://affiliateinsider.com/feed/"),
+    ("EGR Global",       "https://egrglobal.com/feed/"),
+    ("CalvinAyre",       "https://calvinayre.com/feed/"),
+    ("SiGMA",            "https://sigma.world/news/feed/"),
+    ("Gambling Insider", "https://gamblinginsider.com/feed/"),
+    ("GPWA",             "https://www.gpwa.org/feed/"),
+    ("Affiliate Guard Dog", "https://www.affiliateguarddog.com/feed/"),
+    ("AffRoom",          "https://www.affroom.com/feed/"),
+    ("AffiliateFix",     "https://affiliatefix.com/forums/igaming.54/index.rss"),
     # Product management sources
-    ("Lenny's Newsletter",     "<https://www.lennysnewsletter.com/feed>"),
-    ("SVPG",                   "<https://www.svpg.com/feed/>"),
-    ("Mind the Product",       "<https://www.mindtheproduct.com/feed/>"),
-    ("ProductBoard Blog",      "<https://www.productboard.com/blog/feed/>"),
-    ("Shreyas Doshi",          "<https://www.shreyasdoshi.com/feed>"),
-    ("The Pragmatic Engineer", "<https://newsletter.pragmaticengineer.com/feed>"),
-    ("One Knight in Product",  "<https://www.oneknightinproduct.com/feed>"),
-    ("Product Talk",           "<https://www.producttalk.org/feed/>"),
-    ("Intercom Blog",          "<https://www.intercom.com/blog/feed>"),
+    ("Lenny's Newsletter",     "https://www.lennysnewsletter.com/feed"),
+    ("SVPG",                   "https://www.svpg.com/feed/"),
+    ("Mind the Product",       "https://www.mindtheproduct.com/feed/"),
+    ("ProductBoard Blog",      "https://www.productboard.com/blog/feed/"),
+    ("Shreyas Doshi",          "https://www.shreyasdoshi.com/feed"),
+    ("The Pragmatic Engineer", "https://newsletter.pragmaticengineer.com/feed"),
+    ("One Knight in Product",  "https://www.oneknightinproduct.com/feed"),
+    ("Product Talk",           "https://www.producttalk.org/feed/"),
+    ("Intercom Blog",          "https://www.intercom.com/blog/feed"),
 ]
 
 # Keyword tiers
@@ -460,7 +460,7 @@ def supabase_query(table: str, select: str = "*", params: str = "") -> list:
 # ── YOUTUBE SCRAPING ───────────────────────────────────────────────────────────
 
 def get_youtube_channel_id(handle: str) -> str | None:
-    url = f"<https://www.youtube.com/@{handle}>"
+    url = f"https://www.youtube.com/@{handle}"
     try:
         headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
         resp = requests.get(url, headers=headers, timeout=10)
@@ -477,7 +477,7 @@ def fetch_youtube_episodes(handle: str, max_episodes: int = 3) -> list[dict]:
     channel_id = get_youtube_channel_id(handle)
     if not channel_id:
         return []
-    rss_url = f"<https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}>"
+    rss_url = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
     episodes = []
     try:
         feed = feedparser.parse(rss_url)
@@ -910,22 +910,26 @@ DATA SOURCING:
 
 Output ONLY the post text. No preamble."""
 
-    message = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=1000,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": user_prompt}],
-    )
-    return {
-        "post": message.content[0].text.strip(),
-        "pillar_id": pillar["id"],
-        "pillar_name": pillar["name"],
-        "format": post_format,
-        "suggested_angle": suggested_angle,
-        "pm_first_mode": pm_first_mode,
-        "pm_experience_id": pm_experience.get("id", "") if pm_experience else "",
-        "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
-    }
+    try:
+        message = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1000,
+            system=SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": user_prompt}],
+        )
+        return {
+            "post": message.content[0].text.strip(),
+            "pillar_id": pillar["id"],
+            "pillar_name": pillar["name"],
+            "format": post_format,
+            "suggested_angle": suggested_angle,
+            "pm_first_mode": pm_first_mode,
+            "pm_experience_id": pm_experience.get("id", "") if pm_experience else "",
+            "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        }
+    except Exception as e:
+        print(f"  ⚠️  Post generation API call failed: {e}")
+        return None
 
 
 # ── POST SCORING ───────────────────────────────────────────────────────────────
@@ -980,17 +984,28 @@ JSON only:
 
 # ── TELEGRAM DELIVERY ──────────────────────────────────────────────────────────
 
+def _escape_md(text: str) -> str:
+    """Escape Markdown V1 special characters in dynamic/AI-generated text."""
+    for ch in ('_', '*', '`', '['):
+        text = text.replace(ch, '\\' + ch)
+    return text
+
+
 def send_to_telegram(result, scores, top_stories):
     post = result["post"]
     day_name = datetime.now().strftime("%A")
-    overall = scores.get("overall", "?")
-    score_emoji = "🟢" if overall >= 7.5 else "🟡" if overall >= 6.5 else "🔴"
+    overall = scores.get("overall", 0)
+    try:
+        overall_num = float(overall)
+    except (TypeError, ValueError):
+        overall_num = 0.0
+    score_emoji = "🟢" if overall_num >= 7.5 else "🟡" if overall_num >= 6.5 else "🔴"
     mode_label = "🎯 PM-first" if result.get("pm_first_mode") else "📰 News-led"
 
     header = (
         f"✍️ *LinkedIn Post Ready — {day_name}*\n"
         f"_{result['generated_at']}_\n"
-        f"Pillar: _{result['pillar_name']}_\n"
+        f"Pillar: _{_escape_md(result['pillar_name'])}_\n"
         f"Format: _{result['format']}_ | Mode: _{mode_label}_\n"
         f"{score_emoji} Quality: *{overall}/10*\n"
         f"📊 Hook:{scores.get('hook_strength','?')} "
@@ -1000,19 +1015,19 @@ def send_to_telegram(result, scores, top_stories):
         f"Q:{scores.get('question_quality','?')}\n"
     )
     if scores.get("suggestion"):
-        header += f"💡 _{scores['suggestion']}_\n"
+        header += f"💡 _{_escape_md(scores['suggestion'])}_\n"
     if top_stories:
         header += f"Inspired by: [{top_stories[0]['source']}]({top_stories[0].get('link','')})\n"
 
     full_message = (
         header
         + "\n─────────────────────\n\n"
-        + post
+        + _escape_md(post)
         + "\n\n─────────────────────\n✅ Copy and post on LinkedIn\n⏰ Best time: 8–10am CET"
     )
 
     resp = requests.post(
-        f"<https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage>",
+        f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
         json={"chat_id": TELEGRAM_CHAT_ID, "text": full_message,
               "parse_mode": "Markdown", "disable_web_page_preview": True},
         timeout=10,
@@ -1080,6 +1095,8 @@ def save_cache(all_content, pillar_selection):
                 "pillar_id": pillar_selection.get("pillar_id", ""),
                 "reasoning": pillar_selection.get("reasoning", ""),
                 "suggested_angle": pillar_selection.get("suggested_angle", ""),
+                "top_stories": pillar_selection.get("top_stories", []),
+                "article_intel": pillar_selection.get("article_intel", {}),
             }, "content": all_content}, f)
     except Exception:
         pass
@@ -1193,6 +1210,11 @@ def main():
             client, top_stories, pillar_selection, article_intel,
             perf, post_format, pm_experience, pm_first_mode,
         )
+        if result is None:
+            print(f"  ⚠️  Attempt {attempt}: generation failed, skipping...")
+            if attempt < MAX_REGENERATION_ATTEMPTS:
+                post_format = select_format()
+            continue
         scores = score_post(client, result["post"], pillar_selection["pillar"]["name"])
         overall = scores.get("overall", 0)
         print(f"  Attempt {attempt}: {overall}/10 — Hook:{scores.get('hook_strength','?')} "
@@ -1205,6 +1227,10 @@ def main():
             break
         elif attempt < MAX_REGENERATION_ATTEMPTS:
             post_format = select_format()
+
+    if best_result is None:
+        print("❌ All generation attempts failed — cannot send post.")
+        return
 
     print(f"\n📨 Sending to Telegram...")
     send_to_telegram(best_result, best_scores, top_stories)
